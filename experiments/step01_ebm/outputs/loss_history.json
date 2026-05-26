@@ -1,0 +1,1002 @@
+[
+  {
+    "epoch": 1,
+    "mean_energy": -30.931155837317743,
+    "std_energy": 45.561065673828125
+  },
+  {
+    "epoch": 2,
+    "mean_energy": -1449.304008605194,
+    "std_energy": 1475.3905029296875
+  },
+  {
+    "epoch": 3,
+    "mean_energy": -17381.58331027832,
+    "std_energy": 13842.6865234375
+  },
+  {
+    "epoch": 4,
+    "mean_energy": -105066.03626914062,
+    "std_energy": 72477.0
+  },
+  {
+    "epoch": 5,
+    "mean_energy": -423771.2116679688,
+    "std_energy": 265938.4375
+  },
+  {
+    "epoch": 6,
+    "mean_energy": -1306795.037975,
+    "std_energy": 779434.5625
+  },
+  {
+    "epoch": 7,
+    "mean_energy": -3337054.846775,
+    "std_energy": 1903656.625
+  },
+  {
+    "epoch": 8,
+    "mean_energy": -7427671.98165,
+    "std_energy": 4116914.25
+  },
+  {
+    "epoch": 9,
+    "mean_energy": -14875858.0213,
+    "std_energy": 8103403.5
+  },
+  {
+    "epoch": 10,
+    "mean_energy": -27484059.9557,
+    "std_energy": 14866621.0
+  },
+  {
+    "epoch": 11,
+    "mean_energy": -47363162.842,
+    "std_energy": 25241708.0
+  },
+  {
+    "epoch": 12,
+    "mean_energy": -77484396.6298,
+    "std_energy": 41212100.0
+  },
+  {
+    "epoch": 13,
+    "mean_energy": -120914503.7568,
+    "std_energy": 63630492.0
+  },
+  {
+    "epoch": 14,
+    "mean_energy": -181876327.64,
+    "std_energy": 95622456.0
+  },
+  {
+    "epoch": 15,
+    "mean_energy": -264788272.7304,
+    "std_energy": 139008256.0
+  },
+  {
+    "epoch": 16,
+    "mean_energy": -374561051.856,
+    "std_energy": 196140848.0
+  },
+  {
+    "epoch": 17,
+    "mean_energy": -517233903.9504,
+    "std_energy": 271528480.0
+  },
+  {
+    "epoch": 18,
+    "mean_energy": -698156323.8928,
+    "std_energy": 365815200.0
+  },
+  {
+    "epoch": 19,
+    "mean_energy": -926315957.088,
+    "std_energy": 487214304.0
+  },
+  {
+    "epoch": 20,
+    "mean_energy": -1207047106.8448,
+    "std_energy": 633722048.0
+  },
+  {
+    "epoch": 21,
+    "mean_energy": -1549966075.008,
+    "std_energy": 814247808.0
+  },
+  {
+    "epoch": 22,
+    "mean_energy": -1964350323.8272,
+    "std_energy": 1034009152.0
+  },
+  {
+    "epoch": 23,
+    "mean_energy": -2459178008.9408,
+    "std_energy": 1298537600.0
+  },
+  {
+    "epoch": 24,
+    "mean_energy": -3045579098.0864,
+    "std_energy": 1609682304.0
+  },
+  {
+    "epoch": 25,
+    "mean_energy": -3734914845.4144,
+    "std_energy": 1978898816.0
+  },
+  {
+    "epoch": 26,
+    "mean_energy": -4536752702.1824,
+    "std_energy": 2407492096.0
+  },
+  {
+    "epoch": 27,
+    "mean_energy": -5459796815.1808,
+    "std_energy": 2905165312.0
+  },
+  {
+    "epoch": 28,
+    "mean_energy": -6523302449.9456,
+    "std_energy": 3477118720.0
+  },
+  {
+    "epoch": 29,
+    "mean_energy": -7737681996.1088,
+    "std_energy": 4125811712.0
+  },
+  {
+    "epoch": 30,
+    "mean_energy": -9121099650.56,
+    "std_energy": 4889033216.0
+  },
+  {
+    "epoch": 31,
+    "mean_energy": -10684919973.76,
+    "std_energy": 5738269184.0
+  },
+  {
+    "epoch": 32,
+    "mean_energy": -12441417649.3056,
+    "std_energy": 6696207872.0
+  },
+  {
+    "epoch": 33,
+    "mean_energy": -14403370968.6272,
+    "std_energy": 7762709504.0
+  },
+  {
+    "epoch": 34,
+    "mean_energy": -16580443081.6256,
+    "std_energy": 8947359744.0
+  },
+  {
+    "epoch": 35,
+    "mean_energy": -19001430221.7728,
+    "std_energy": 10269872128.0
+  },
+  {
+    "epoch": 36,
+    "mean_energy": -21685066868.736,
+    "std_energy": 11757123584.0
+  },
+  {
+    "epoch": 37,
+    "mean_energy": -24636376463.7184,
+    "std_energy": 13371860992.0
+  },
+  {
+    "epoch": 38,
+    "mean_energy": -27880376383.0784,
+    "std_energy": 15150044160.0
+  },
+  {
+    "epoch": 39,
+    "mean_energy": -31437292762.624,
+    "std_energy": 17099529216.0
+  },
+  {
+    "epoch": 40,
+    "mean_energy": -35339186063.872,
+    "std_energy": 19264518144.0
+  },
+  {
+    "epoch": 41,
+    "mean_energy": -39579912638.464,
+    "std_energy": 21624014848.0
+  },
+  {
+    "epoch": 42,
+    "mean_energy": -44176644674.2528,
+    "std_energy": 24155783168.0
+  },
+  {
+    "epoch": 43,
+    "mean_energy": -49152857534.5664,
+    "std_energy": 26899200000.0
+  },
+  {
+    "epoch": 44,
+    "mean_energy": -54535447042.048,
+    "std_energy": 29874825216.0
+  },
+  {
+    "epoch": 45,
+    "mean_energy": -60346044990.6688,
+    "std_energy": 33093545984.0
+  },
+  {
+    "epoch": 46,
+    "mean_energy": -66599119363.6864,
+    "std_energy": 36601393152.0
+  },
+  {
+    "epoch": 47,
+    "mean_energy": -73314307164.16,
+    "std_energy": 40329318400.0
+  },
+  {
+    "epoch": 48,
+    "mean_energy": -80533377772.7488,
+    "std_energy": 44355911680.0
+  },
+  {
+    "epoch": 49,
+    "mean_energy": -88235795417.9072,
+    "std_energy": 48582037504.0
+  },
+  {
+    "epoch": 50,
+    "mean_energy": -96478715955.8144,
+    "std_energy": 53215850496.0
+  },
+  {
+    "epoch": 51,
+    "mean_energy": -105257555975.3728,
+    "std_energy": 58062934016.0
+  },
+  {
+    "epoch": 52,
+    "mean_energy": -114631674739.5072,
+    "std_energy": 63276244992.0
+  },
+  {
+    "epoch": 53,
+    "mean_energy": -124583960768.9216,
+    "std_energy": 68841955328.0
+  },
+  {
+    "epoch": 54,
+    "mean_energy": -135145045454.4384,
+    "std_energy": 74724573184.0
+  },
+  {
+    "epoch": 55,
+    "mean_energy": -146406515061.9648,
+    "std_energy": 81012572160.0
+  },
+  {
+    "epoch": 56,
+    "mean_energy": -158291392881.0496,
+    "std_energy": 87599341568.0
+  },
+  {
+    "epoch": 57,
+    "mean_energy": -170909822988.288,
+    "std_energy": 94687657984.0
+  },
+  {
+    "epoch": 58,
+    "mean_energy": -184246750300.9792,
+    "std_energy": 102233505792.0
+  },
+  {
+    "epoch": 59,
+    "mean_energy": -198263523376.7424,
+    "std_energy": 110014865408.0
+  },
+  {
+    "epoch": 60,
+    "mean_energy": -213087310234.4192,
+    "std_energy": 118328827904.0
+  },
+  {
+    "epoch": 61,
+    "mean_energy": -228636425757.4912,
+    "std_energy": 126999683072.0
+  },
+  {
+    "epoch": 62,
+    "mean_energy": -245135935802.5728,
+    "std_energy": 136314904576.0
+  },
+  {
+    "epoch": 63,
+    "mean_energy": -262449529232.5888,
+    "std_energy": 146014748672.0
+  },
+  {
+    "epoch": 64,
+    "mean_energy": -280594029111.7056,
+    "std_energy": 156249669632.0
+  },
+  {
+    "epoch": 65,
+    "mean_energy": -299652712034.304,
+    "std_energy": 166990544896.0
+  },
+  {
+    "epoch": 66,
+    "mean_energy": -319598291096.3712,
+    "std_energy": 178111496192.0
+  },
+  {
+    "epoch": 67,
+    "mean_energy": -340532838960.3328,
+    "std_energy": 189990486016.0
+  },
+  {
+    "epoch": 68,
+    "mean_energy": -362395793634.0992,
+    "std_energy": 202248781824.0
+  },
+  {
+    "epoch": 69,
+    "mean_energy": -385372301843.6608,
+    "std_energy": 215193796608.0
+  },
+  {
+    "epoch": 70,
+    "mean_energy": -409287363193.2416,
+    "std_energy": 228626071552.0
+  },
+  {
+    "epoch": 71,
+    "mean_energy": -434268109548.7488,
+    "std_energy": 242755584000.0
+  },
+  {
+    "epoch": 72,
+    "mean_energy": -460389963764.5312,
+    "std_energy": 257418100736.0
+  },
+  {
+    "epoch": 73,
+    "mean_energy": -487582554762.4448,
+    "std_energy": 272746037248.0
+  },
+  {
+    "epoch": 74,
+    "mean_energy": -515919699122.5856,
+    "std_energy": 288743915520.0
+  },
+  {
+    "epoch": 75,
+    "mean_energy": -545337439032.1152,
+    "std_energy": 305280974848.0
+  },
+  {
+    "epoch": 76,
+    "mean_energy": -575902016361.2672,
+    "std_energy": 322502066176.0
+  },
+  {
+    "epoch": 77,
+    "mean_energy": -607786159164.6208,
+    "std_energy": 340572798976.0
+  },
+  {
+    "epoch": 78,
+    "mean_energy": -640864031139.4304,
+    "std_energy": 359205863424.0
+  },
+  {
+    "epoch": 79,
+    "mean_energy": -675118271558.4512,
+    "std_energy": 378434191360.0
+  },
+  {
+    "epoch": 80,
+    "mean_energy": -710860314592.8704,
+    "std_energy": 398757396480.0
+  },
+  {
+    "epoch": 81,
+    "mean_energy": -747818819831.3984,
+    "std_energy": 419519397888.0
+  },
+  {
+    "epoch": 82,
+    "mean_energy": -785981703169.6384,
+    "std_energy": 440937283584.0
+  },
+  {
+    "epoch": 83,
+    "mean_energy": -825897306723.1232,
+    "std_energy": 463474491392.0
+  },
+  {
+    "epoch": 84,
+    "mean_energy": -867295433713.2544,
+    "std_energy": 486938738688.0
+  },
+  {
+    "epoch": 85,
+    "mean_energy": -910029758709.76,
+    "std_energy": 511148490752.0
+  },
+  {
+    "epoch": 86,
+    "mean_energy": -954395727616.4095,
+    "std_energy": 536250646528.0
+  },
+  {
+    "epoch": 87,
+    "mean_energy": -1000258260910.08,
+    "std_energy": 562302877696.0
+  },
+  {
+    "epoch": 88,
+    "mean_energy": -1047578814758.912,
+    "std_energy": 588920913920.0
+  },
+  {
+    "epoch": 89,
+    "mean_energy": -1096400561566.5153,
+    "std_energy": 616588115968.0
+  },
+  {
+    "epoch": 90,
+    "mean_energy": -1146756324039.0657,
+    "std_energy": 644993712128.0
+  },
+  {
+    "epoch": 91,
+    "mean_energy": -1198933877807.5137,
+    "std_energy": 674492841984.0
+  },
+  {
+    "epoch": 92,
+    "mean_energy": -1252938852777.984,
+    "std_energy": 705180336128.0
+  },
+  {
+    "epoch": 93,
+    "mean_energy": -1308397530729.6768,
+    "std_energy": 736523976704.0
+  },
+  {
+    "epoch": 94,
+    "mean_energy": -1365736349820.5183,
+    "std_energy": 768615120896.0
+  },
+  {
+    "epoch": 95,
+    "mean_energy": -1425049578392.7808,
+    "std_energy": 802661072896.0
+  },
+  {
+    "epoch": 96,
+    "mean_energy": -1485806315497.0625,
+    "std_energy": 836739923968.0
+  },
+  {
+    "epoch": 97,
+    "mean_energy": -1548451566469.12,
+    "std_energy": 872084930560.0
+  },
+  {
+    "epoch": 98,
+    "mean_energy": -1613224793885.901,
+    "std_energy": 909137346560.0
+  },
+  {
+    "epoch": 99,
+    "mean_energy": -1680095212457.1648,
+    "std_energy": 946736660480.0
+  },
+  {
+    "epoch": 100,
+    "mean_energy": -1748586846768.3328,
+    "std_energy": 985562677248.0
+  },
+  {
+    "epoch": 101,
+    "mean_energy": -1819458801093.837,
+    "std_energy": 1025793327104.0
+  },
+  {
+    "epoch": 102,
+    "mean_energy": -1892132591907.6353,
+    "std_energy": 1067089264640.0
+  },
+  {
+    "epoch": 103,
+    "mean_energy": -1966746891183.7185,
+    "std_energy": 1109467332608.0
+  },
+  {
+    "epoch": 104,
+    "mean_energy": -2043135899946.1887,
+    "std_energy": 1152564723712.0
+  },
+  {
+    "epoch": 105,
+    "mean_energy": -2121992841324.1345,
+    "std_energy": 1196844646400.0
+  },
+  {
+    "epoch": 106,
+    "mean_energy": -2203083782107.955,
+    "std_energy": 1243370749952.0
+  },
+  {
+    "epoch": 107,
+    "mean_energy": -2286327385784.32,
+    "std_energy": 1290256384000.0
+  },
+  {
+    "epoch": 108,
+    "mean_energy": -2371919618814.771,
+    "std_energy": 1339174682624.0
+  },
+  {
+    "epoch": 109,
+    "mean_energy": -2459320285318.3486,
+    "std_energy": 1388234801152.0
+  },
+  {
+    "epoch": 110,
+    "mean_energy": -2549618550872.4736,
+    "std_energy": 1439661817856.0
+  },
+  {
+    "epoch": 111,
+    "mean_energy": -2642010704065.331,
+    "std_energy": 1492025475072.0
+  },
+  {
+    "epoch": 112,
+    "mean_energy": -2736869904351.232,
+    "std_energy": 1545865003008.0
+  },
+  {
+    "epoch": 113,
+    "mean_energy": -2834259655806.1567,
+    "std_energy": 1600790200320.0
+  },
+  {
+    "epoch": 114,
+    "mean_energy": -2934319968406.733,
+    "std_energy": 1657919111168.0
+  },
+  {
+    "epoch": 115,
+    "mean_energy": -3036982539688.3457,
+    "std_energy": 1716391116800.0
+  },
+  {
+    "epoch": 116,
+    "mean_energy": -3141962629958.861,
+    "std_energy": 1775811297280.0
+  },
+  {
+    "epoch": 117,
+    "mean_energy": -3249027846766.592,
+    "std_energy": 1836534202368.0
+  },
+  {
+    "epoch": 118,
+    "mean_energy": -3359133750637.3633,
+    "std_energy": 1898968776704.0
+  },
+  {
+    "epoch": 119,
+    "mean_energy": -3471948289356.595,
+    "std_energy": 1963494998016.0
+  },
+  {
+    "epoch": 120,
+    "mean_energy": -3586800050385.7153,
+    "std_energy": 2028664389632.0
+  },
+  {
+    "epoch": 121,
+    "mean_energy": -3704337541536.154,
+    "std_energy": 2094548647936.0
+  },
+  {
+    "epoch": 122,
+    "mean_energy": -3825426450651.5454,
+    "std_energy": 2163565133824.0
+  },
+  {
+    "epoch": 123,
+    "mean_energy": -3949609696821.248,
+    "std_energy": 2234660159488.0
+  },
+  {
+    "epoch": 124,
+    "mean_energy": -4076061500479.8975,
+    "std_energy": 2306161770496.0
+  },
+  {
+    "epoch": 125,
+    "mean_energy": -4205329634282.7007,
+    "std_energy": 2379354996736.0
+  },
+  {
+    "epoch": 126,
+    "mean_energy": -4337704917847.2446,
+    "std_energy": 2454360686592.0
+  },
+  {
+    "epoch": 127,
+    "mean_energy": -4473326584279.859,
+    "std_energy": 2531728293888.0
+  },
+  {
+    "epoch": 128,
+    "mean_energy": -4611432851557.581,
+    "std_energy": 2609962024960.0
+  },
+  {
+    "epoch": 129,
+    "mean_energy": -4752419743517.9,
+    "std_energy": 2689756823552.0
+  },
+  {
+    "epoch": 130,
+    "mean_energy": -4896896854930.228,
+    "std_energy": 2772545830912.0
+  },
+  {
+    "epoch": 131,
+    "mean_energy": -5044498005347.533,
+    "std_energy": 2855939080192.0
+  },
+  {
+    "epoch": 132,
+    "mean_energy": -5195568950358.835,
+    "std_energy": 2941437607936.0
+  },
+  {
+    "epoch": 133,
+    "mean_energy": -5349233973539.635,
+    "std_energy": 3029198176256.0
+  },
+  {
+    "epoch": 134,
+    "mean_energy": -5505329740644.352,
+    "std_energy": 3117624590336.0
+  },
+  {
+    "epoch": 135,
+    "mean_energy": -5665186560737.28,
+    "std_energy": 3207289634816.0
+  },
+  {
+    "epoch": 136,
+    "mean_energy": -5830027148276.531,
+    "std_energy": 3301395398656.0
+  },
+  {
+    "epoch": 137,
+    "mean_energy": -5998045179320.7295,
+    "std_energy": 3396831543296.0
+  },
+  {
+    "epoch": 138,
+    "mean_energy": -6168757602287.616,
+    "std_energy": 3494035849216.0
+  },
+  {
+    "epoch": 139,
+    "mean_energy": -6343368875691.213,
+    "std_energy": 3593865003008.0
+  },
+  {
+    "epoch": 140,
+    "mean_energy": -6521884088087.348,
+    "std_energy": 3695295332352.0
+  },
+  {
+    "epoch": 141,
+    "mean_energy": -6704119857951.539,
+    "std_energy": 3800208506880.0
+  },
+  {
+    "epoch": 142,
+    "mean_energy": -6888738158529.741,
+    "std_energy": 3903751192576.0
+  },
+  {
+    "epoch": 143,
+    "mean_energy": -7077200037727.437,
+    "std_energy": 4009817014272.0
+  },
+  {
+    "epoch": 144,
+    "mean_energy": -7270592493885.85,
+    "std_energy": 4120426840064.0
+  },
+  {
+    "epoch": 145,
+    "mean_energy": -7467538646879.437,
+    "std_energy": 4233846849536.0
+  },
+  {
+    "epoch": 146,
+    "mean_energy": -7667897013737.882,
+    "std_energy": 4347680522240.0
+  },
+  {
+    "epoch": 147,
+    "mean_energy": -7871204772229.939,
+    "std_energy": 4462206255104.0
+  },
+  {
+    "epoch": 148,
+    "mean_energy": -8079942361415.68,
+    "std_energy": 4581644828672.0
+  },
+  {
+    "epoch": 149,
+    "mean_energy": -8291514461664.051,
+    "std_energy": 4701948477440.0
+  },
+  {
+    "epoch": 150,
+    "mean_energy": -8507134124779.11,
+    "std_energy": 4825129418752.0
+  },
+  {
+    "epoch": 151,
+    "mean_energy": -8726740303295.283,
+    "std_energy": 4949516746752.0
+  },
+  {
+    "epoch": 152,
+    "mean_energy": -8950655384131.994,
+    "std_energy": 5076810203136.0
+  },
+  {
+    "epoch": 153,
+    "mean_energy": -9179022876187.033,
+    "std_energy": 5207240998912.0
+  },
+  {
+    "epoch": 154,
+    "mean_energy": -9412631547294.516,
+    "std_energy": 5339846541312.0
+  },
+  {
+    "epoch": 155,
+    "mean_energy": -9649703050228.531,
+    "std_energy": 5476094836736.0
+  },
+  {
+    "epoch": 156,
+    "mean_energy": -9891428382461.133,
+    "std_energy": 5611673616384.0
+  },
+  {
+    "epoch": 157,
+    "mean_energy": -10138009379248.537,
+    "std_energy": 5753184190464.0
+  },
+  {
+    "epoch": 158,
+    "mean_energy": -10388595466462.822,
+    "std_energy": 5897111207936.0
+  },
+  {
+    "epoch": 159,
+    "mean_energy": -10643090328675.943,
+    "std_energy": 6041795297280.0
+  },
+  {
+    "epoch": 160,
+    "mean_energy": -10902690194312.396,
+    "std_energy": 6188775243776.0
+  },
+  {
+    "epoch": 161,
+    "mean_energy": -11166063161560.27,
+    "std_energy": 6339175120896.0
+  },
+  {
+    "epoch": 162,
+    "mean_energy": -11434506094536.295,
+    "std_energy": 6493539139584.0
+  },
+  {
+    "epoch": 163,
+    "mean_energy": -11706824576309.658,
+    "std_energy": 6646929555456.0
+  },
+  {
+    "epoch": 164,
+    "mean_energy": -11985256579412.787,
+    "std_energy": 6806421110784.0
+  },
+  {
+    "epoch": 165,
+    "mean_energy": -12268004590485.504,
+    "std_energy": 6966184247296.0
+  },
+  {
+    "epoch": 166,
+    "mean_energy": -12556558286952.857,
+    "std_energy": 7131796865024.0
+  },
+  {
+    "epoch": 167,
+    "mean_energy": -12848296387333.324,
+    "std_energy": 7297232797696.0
+  },
+  {
+    "epoch": 168,
+    "mean_energy": -13145723587972.3,
+    "std_energy": 7469319323648.0
+  },
+  {
+    "epoch": 169,
+    "mean_energy": -13447553130063.463,
+    "std_energy": 7639959863296.0
+  },
+  {
+    "epoch": 170,
+    "mean_energy": -13754938575369.012,
+    "std_energy": 7814918963200.0
+  },
+  {
+    "epoch": 171,
+    "mean_energy": -14067731701589.605,
+    "std_energy": 7993289605120.0
+  },
+  {
+    "epoch": 172,
+    "mean_energy": -14386747569445.273,
+    "std_energy": 8175020408832.0
+  },
+  {
+    "epoch": 173,
+    "mean_energy": -14709201200689.97,
+    "std_energy": 8358379651072.0
+  },
+  {
+    "epoch": 174,
+    "mean_energy": -15037072046450.28,
+    "std_energy": 8545980383232.0
+  },
+  {
+    "epoch": 175,
+    "mean_energy": -15370894353943.756,
+    "std_energy": 8735891128320.0
+  },
+  {
+    "epoch": 176,
+    "mean_energy": -15708571045829.018,
+    "std_energy": 8927793119232.0
+  },
+  {
+    "epoch": 177,
+    "mean_energy": -16052455095559.783,
+    "std_energy": 9124132683776.0
+  },
+  {
+    "epoch": 178,
+    "mean_energy": -16402046523591.885,
+    "std_energy": 9323033919488.0
+  },
+  {
+    "epoch": 179,
+    "mean_energy": -16757073863298.252,
+    "std_energy": 9526074933248.0
+  },
+  {
+    "epoch": 180,
+    "mean_energy": -17117990014261.658,
+    "std_energy": 9729739849728.0
+  },
+  {
+    "epoch": 181,
+    "mean_energy": -17486063645910.63,
+    "std_energy": 9940732215296.0
+  },
+  {
+    "epoch": 182,
+    "mean_energy": -17858169745702.91,
+    "std_energy": 10151860895744.0
+  },
+  {
+    "epoch": 183,
+    "mean_energy": -18237217973678.9,
+    "std_energy": 10369835728896.0
+  },
+  {
+    "epoch": 184,
+    "mean_energy": -18620799147468.39,
+    "std_energy": 10587523252224.0
+  },
+  {
+    "epoch": 185,
+    "mean_energy": -19009843034062.848,
+    "std_energy": 10808766496768.0
+  },
+  {
+    "epoch": 186,
+    "mean_energy": -19404065100319.95,
+    "std_energy": 11032219090944.0
+  },
+  {
+    "epoch": 187,
+    "mean_energy": -19805798798406.453,
+    "std_energy": 11261649616896.0
+  },
+  {
+    "epoch": 188,
+    "mean_energy": -20214243802061.21,
+    "std_energy": 11492965482496.0
+  },
+  {
+    "epoch": 189,
+    "mean_energy": -20631101209837.566,
+    "std_energy": 11732868136960.0
+  },
+  {
+    "epoch": 190,
+    "mean_energy": -21051826326418.227,
+    "std_energy": 11972067196928.0
+  },
+  {
+    "epoch": 191,
+    "mean_energy": -21477753071285.043,
+    "std_energy": 12217692979200.0
+  },
+  {
+    "epoch": 192,
+    "mean_energy": -21911432653701.12,
+    "std_energy": 12462822785024.0
+  },
+  {
+    "epoch": 193,
+    "mean_energy": -22352893217236.582,
+    "std_energy": 12713245802496.0
+  },
+  {
+    "epoch": 194,
+    "mean_energy": -22798471562631.58,
+    "std_energy": 12969689743360.0
+  },
+  {
+    "epoch": 195,
+    "mean_energy": -23251924774184.55,
+    "std_energy": 13229345472512.0
+  },
+  {
+    "epoch": 196,
+    "mean_energy": -23711121308594.996,
+    "std_energy": 13490792169472.0
+  },
+  {
+    "epoch": 197,
+    "mean_energy": -24176077514316.188,
+    "std_energy": 13755957116928.0
+  },
+  {
+    "epoch": 198,
+    "mean_energy": -24650675476181.812,
+    "std_energy": 14027282448384.0
+  },
+  {
+    "epoch": 199,
+    "mean_energy": -25131792232821.555,
+    "std_energy": 14302976147456.0
+  },
+  {
+    "epoch": 200,
+    "mean_energy": -25619769903126.938,
+    "std_energy": 14584370954240.0
+  }
+]
