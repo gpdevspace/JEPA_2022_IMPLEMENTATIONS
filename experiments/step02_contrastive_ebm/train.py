@@ -46,10 +46,18 @@ def contrastive_loss(
         raise ValueError(f"Unknown loss_type: {loss_type}")
 
 
-def sample_negatives(y_all, batch_size, strategy="random"):
-    # For now, random negatives from the dataset
-    idx = torch.randint(0, y_all.shape[0], (batch_size,))
-    return y_all[idx]
+def sample_negatives(y_all, yb, strategy="random"):
+    if strategy == "random":
+        idx = torch.randint(0, y_all.shape[0], (yb.shape[0],), device=yb.device)
+        return y_all[idx]
+    if strategy == "in_batch":
+        perm = torch.randperm(yb.shape[0], device=yb.device)
+        neg = yb[perm]
+        if (perm == torch.arange(yb.shape[0], device=yb.device)).any():
+            perm = (perm + 1) % yb.shape[0]
+            neg = yb[perm]
+        return neg
+    raise ValueError(f"Unknown negative strategy: {strategy}")
 
 
 def main() -> None:
@@ -60,6 +68,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--loss-type", choices=["hinge", "nce", "logistic"], default="hinge")
+    parser.add_argument("--negative-strategy", choices=["random", "in_batch"], default="random")
     args = parser.parse_args()
 
     device = get_device()
@@ -86,16 +95,18 @@ def main() -> None:
         losses = []
         for xb, yb in loader:
             xb, yb = xb.to(device), yb.to(device)
-            negatives = sample_negatives(y_all, xb.shape[0]).to(device)
+            negatives = sample_negatives(y_all.to(device), yb, strategy=args.negative_strategy)
             loss = contrastive_loss(model, xb, yb, negatives, loss_type=args.loss_type)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
-        mean_loss = float(torch.tensor(losses).mean())
-        history.append({"epoch": epoch, "mean_loss": mean_loss})
+        losses_tensor = torch.tensor(losses, dtype=torch.float32)
+        mean_loss = float(losses_tensor.mean())
+        std_loss = float(losses_tensor.std(unbiased=False))
+        history.append({"epoch": epoch, "mean_loss": mean_loss, "std_loss": std_loss})
         if epoch % 10 == 0:
-            print(f"Epoch {epoch}: mean_loss={mean_loss:.6f}")
+            print(f"Epoch {epoch}: mean_loss={mean_loss:.6f}, std_loss={std_loss:.6f}")
 
     checkpoint = {
         "model_state_dict": model.state_dict(),

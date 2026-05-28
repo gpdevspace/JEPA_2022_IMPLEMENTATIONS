@@ -54,13 +54,12 @@ def main() -> None:
     idx = min(args.x_index, len(x_all) - 1)
     x_fixed = x_all[idx : idx + 1].to(device)
 
-
-    # Reshape for heatmap/surface
+    y_points, energies = energy_grid(model, x_fixed, device)
     y_grid = y_points.reshape(GRID_RES, GRID_RES, 2)
     energies_grid = energies.reshape(GRID_RES, GRID_RES)
 
     # Get manifold points for overlay (true y for all x)
-    manifold_y = y_all.cpu().numpy() if hasattr(y_all, 'cpu') else y_all
+    manifold_y = y_all.cpu().numpy()
 
     plot_energy_heatmap(
         y_grid,
@@ -81,8 +80,9 @@ def main() -> None:
     plot_training_curve(
         [h["epoch"] for h in history],
         [h["mean_loss"] for h in history],
-        None,
+        [h.get("std_loss", 0.0) for h in history],
         OUTPUT_DIR / "training_curve.png",
+        "Contrastive EBM training curve (hinge, random negatives)",
     )
     print("Saved visualizations to outputs/")
 

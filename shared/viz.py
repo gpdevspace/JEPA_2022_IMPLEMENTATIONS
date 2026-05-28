@@ -69,6 +69,7 @@ def plot_training_curve(
     mean_energy: list[float],
     std_energy: list[float],
     out_path: Path,
+    title: str = "Training curve",
 ) -> None:
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.plot(epochs, mean_energy, label="mean F(x, y)")
@@ -77,7 +78,7 @@ def plot_training_curve(
     ax.fill_between(epochs, mean - std, mean + std, alpha=0.25, label="±1 std (batch)")
     ax.set_xlabel("epoch")
     ax.set_ylabel("energy")
-    ax.set_title("Naive training: positive pairs only (collapse expected)")
+    ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
