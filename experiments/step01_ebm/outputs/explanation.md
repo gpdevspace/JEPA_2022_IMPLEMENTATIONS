@@ -8,75 +8,104 @@
 
 ## 1. Paper anchor
 
-Section 4.1 of the paper introduces the basic object used throughout the rest of the architecture:
+Section 4.1 introduces the object reused everywhere later in the stack:
 
 > *"An EBM is a trainable system that, given two inputs x and y, produces a scalar energy F_w(x, y) that measures the degree of incompatibility between x and y."*
 
-Important nuances from the same section (and surrounding discussion):
+Key ideas for this step:
 
-- **Low energy** means *compatible*; **high energy** means *incompatible*.
-- The learnable weights **w** define an **energy landscape** over pairs (x, y) — especially over choices of y for a fixed x.
-- An EBM is **not** required to be a normalized probability model. There is no partition function in this step; we are not doing softmax over y.
+- **Low energy** = compatible pair; **high energy** = incompatible pair.
+- **w** parameterizes an **energy landscape** — for fixed x, varying y traces a surface over the output space.
+- An EBM is **not** a normalized density: we never compute Z = ∫ exp(−F) dy in Step 1.
 
-Step 1 is the **foundation** of the 10-step curriculum. Every later idea — contrastive training (§4.2), joint embeddings (§4.3), JEPA (§4.4), VICReg (§4.5), hierarchical stacks, and the full agent — assumes you already understand what F_w(x, y) is and why **training it naively fails**.
+Step 1 is the curriculum foundation. Contrastive training (§4.2), joint embeddings (§4.3), JEPA (§4.4), and the full agent (§3) all assume you understand F_w(x, y) and why **naive training collapses**.
 
 ---
 
 ## 2. Problem we solved
 
-### What question this experiment answers
+### Question
 
-Before we can learn *representations*, *predictions in embedding space*, or *planning through a world model*, we need a precise answer to:
+**How do we score whether two variables belong together?**
 
-**How do we score whether two variables “go together”?**
+We implement F_w(x, y) as a neural network and train with the simplest objective: minimize energy on **correct** pairs only.
 
-Step 1 implements that scorer as a neural network F_w(x, y) and trains it in the simplest possible way: **only on correct pairs**, minimizing energy on positives.
+### Deliberate non-goal
 
-### What we deliberately do *not* solve yet
+We do **not** learn a useful compatibility function yet. Success = **observing failure** (collapse) so §4.2 feels mandatory.
 
-We do **not** train a useful compatibility function. That is intentional. The experiment is designed to fail in an instructive way so that §4.2 (contrastive methods) feels necessary rather than optional.
+### Failure mode: energy collapse
 
-### The core failure mode we demonstrate: energy collapse
+With loss L = mean F(x, y) on positives only:
 
-If the loss only says “make F(x, y) small for training pairs (x, y)”, the network is never told that **wrong** y values should have **high** energy. Gradient descent can therefore:
-
-1. Drive energies on training pairs arbitrarily low (unbounded descent), and/or  
-2. Produce a landscape that does **not** separate correct y from incorrect y.
-
-The paper’s roadmap depends on recognizing this **collapse** early. Without Step 1, contrastive losses, regularizers, and JEPA training can look like arbitrary extra terms. After Step 1, they look like **fixes to a known bug**.
+1. Nothing pushes F(x, ŷ) **up** for wrong ŷ.
+2. The network can drive F on training pairs toward **arbitrarily negative** values (unbounded descent).
+3. The landscape over y for fixed x need not form a **valley on the data manifold** — everything can look “compatible.”
 
 ---
 
 ## 3. Data
 
-We use **synthetic 2D manifolds** so we can plot the energy landscape F_w(x, y) as a heatmap over y ∈ ℝ².
+### 3.1 What x and y represent
 
-### Default: Swiss roll
+In the paper’s general notation, **x** and **y** are two pieces of information whose joint plausibility we score. They may live in different spaces (e.g. context vs outcome, observation vs prediction target).
 
-| Item | Detail |
-|------|--------|
-| **x** | Shape `(N, 1)`. A scalar in **[0, 1]** encoding normalized position along the roll (rank of arc parameter t among samples). |
-| **y** | Shape `(N, 2)`. Point on the Swiss roll: y₁ = t cos t, y₂ = t sin t, with small Gaussian noise (σ = 0.05). |
-| **N** | 10,000 pairs |
-| **Pair type** | **Positive only**: each (x, y) is a matched pair from the same sample index. |
+| Variable | In this toy | Semantic role |
+|----------|-------------|----------------|
+| **x** | 1D scalar in [0, 1] | A **conditioning index** along the generative process — “where we are” along the manifold before we observe the 2D outcome. It stands in for partial context, time index, or latent coordinate. |
+| **y** | 2D vector in ℝ² | The **outcome** we judge for compatibility with x — a point in output space. Later steps replace ℝ² with images, frames, or embeddings. |
 
-Implementation: `shared/data.py` → `swiss_roll_pairs()`.
+The EBM answers: *given this x, is this y a plausible partner?* That is exactly the interface F_w(x, y) in §4.1, stripped to the smallest geometry where we can **see** the answer as a picture.
 
-### Alternative: concentric circles
+### 3.2 How the data is built
 
-| Item | Detail |
-|------|--------|
-| **x** | Angle θ normalized to [0, 1] |
-| **y** | Point on inner (r = 1) or outer (r = 2) circle + noise |
-| **Use** | `train.py --dataset circles` |
+**Default: Swiss roll** (`shared/data.py` → `swiss_roll_pairs()`)
 
-### Why this data?
+1. Sample arc parameter t ~ Uniform(0, 2π), N = 10,000.
+2. Embed on the roll: y₁ = t cos t, y₂ = t sin t.
+3. Add isotropic Gaussian noise with σ = 0.05.
+4. Build x as the **normalized rank** of t among samples, mapping to [0, 1]. Same index i gives matched (xᵢ, yᵢ).
 
-- **Low-dimensional y** lets us visualize the full energy surface over a grid in ℝ².
-- **Structured manifold** means a *good* EBM (after Step 2) should show **low energy near the true curve** and higher energy off-manifold.
-- **1D x** models a “conditioning variable” (index, context, partial observation) without image complexity — same interface as later steps where x is richer.
+**Alternative: concentric circles** (`--dataset circles`)
 
-We do **not** use negative pairs in Step 1. There is no ŷ sampled from other indices.
+- Half the points on radius 1, half on radius 2; x = θ / 2π for the polar angle.
+- Same (x, y) pairing by index; useful for a simpler, symmetric manifold.
+
+| Item | Swiss roll (default) |
+|------|---------------------|
+| x shape | (10000, 1) |
+| y shape | (10000, 2) |
+| Pairing | Positive only: (xᵢ, yᵢ) matched |
+| Negatives | **None** in Step 1 |
+
+### 3.3 Why this dataset was chosen
+
+| Reason | Benefit for Step 1 |
+|--------|-------------------|
+| **y is 2D** | We can evaluate F_w(x, y) on a dense grid in the plane and draw heatmaps — the energy **landscape** from the paper becomes literal terrain. |
+| **y lies on a 1D curve in 2D** | A *good* EBM (Step 2+) should concentrate low energy **on** the Swiss roll and higher energy **off** it. We can visually check whether the model learned a “compatibility valley.” |
+| **x is low-dimensional** | We can fix one x (one conditioning value) and sweep all y — the standard “slice” of the landscape §4.1 describes. |
+| **Synthetic + noiseless structure** | No dataset download, fast on MPS, reproducible seed — focus stays on **training dynamics**, not data engineering. |
+| **Known ground-truth manifold** | White scatter overlays in plots show where true pairs live; you can judge whether low-energy regions align with the roll. |
+
+We did **not** use MNIST, CIFAR, or video here because high-dimensional y would require slices, PCA, or many 2D projections — that obscures the first lesson (what F and collapse mean).
+
+### 3.4 Analogy to the full paper setting
+
+| This toy | Later in the curriculum / paper |
+|----------|----------------------------------|
+| x = scalar index along roll | x = past frames, partial observation, or state s_t |
+| y = 2D point on manifold | y = future frame, augmented image, or target representation s_y |
+| F_w(x, y) = MLP on encodings | F = ‖s_x − s_y‖², prediction error in embedding space, or planning cost |
+| Heatmap over ℝ² | t-SNE / scalar summaries when y is high-D |
+
+The **pairing structure** is the same: the model always scores **consistency between two inputs**, not reconstruction of one from the other alone.
+
+### 3.5 What we excluded (and why)
+
+- **No negative pairs ŷ** — Step 1 isolates the bug in positive-only training; Step 2 adds contrastive repulsion.
+- **No held-out test split** — we care about qualitative landscape shape, not benchmark accuracy.
+- **No normalization of energy** — reinforces that EBMs are not probabilities in this step.
 
 ---
 
@@ -84,200 +113,178 @@ We do **not** use negative pairs in Step 1. There is no ŷ sampled from other in
 
 ### 4.1 Architecture
 
-The EBM follows the plan’s template (`experiments/step01_ebm/model.py`):
-
 ```
-x (1D) ──► x_encoder: MLP(1 → 64 → 128) ──► s_x (128D) ──┐
-                                                          ├── concat (256D) ──► energy_head: MLP(256 → 128 → 64 → 1) ──► F_w(x,y)
-y (2D) ──► y_encoder: MLP(2 → 64 → 128) ──► s_y (128D) ──┘
+x (1D) ──► x_encoder: MLP(1 → 64 → 128) ──► s_x ──┐
+                                                   ├── concat ──► energy_head ──► F_w(x,y) ∈ ℝ
+y (2D) ──► y_encoder: MLP(2 → 64 → 128) ──► s_y ──┘
 ```
 
-- Separate encoders let x and y live in different input spaces but meet in a shared space before the scalar energy is computed.
-- ReLU MLPs (`shared/modules.py`) keep the build minimal and reusable in Step 2+.
+Implemented in `experiments/step01_ebm/model.py`; MLP helper in `shared/modules.py`.
 
-**Interpretation:** The network learns arbitrary features of x and y, then a final MLP decides how “incompatible” the pair is. There is no explicit distance metric or cosine similarity yet (that appears in joint embedding architectures in Step 3).
+### 4.2 Training (naive)
 
-### 4.2 Training (naive — by design)
+| Hyperparameter | Value |
+|----------------|--------|
+| Loss | L = mean_batch F_w(x, y) |
+| Optimizer | Adam, lr = 1e-3 |
+| Epochs | 200 |
+| Batch size | 256 |
+| Seed | 42 |
+| Device | MPS if available (`shared/device.py`), else CPU |
 
-| Hyperparameter | Default |
-|----------------|---------|
-| **Loss** | L = mean_batch F_w(x, y) |
-| **Optimizer** | Adam, lr = 1e-3 |
-| **Epochs** | 200 |
-| **Batch size** | 256 |
-| **Seed** | 42 |
-| **Device** | `mps` if available (`shared/device.py`), else CPU |
+Logs → `outputs/loss_history.json`; weights → `outputs/checkpoint.pt`.
 
-Procedure (`train.py`):
+### 4.3 Hardware
 
-1. Load all positive pairs into a `TensorDataset`.
-2. For each epoch, shuffle batches, forward (x, y), compute mean energy, backprop, step.
-3. Log per-epoch **mean** and **std** of F over all batch elements → `outputs/loss_history.json`.
-4. Save weights → `outputs/checkpoint.pt`.
-
-**What is missing from the loss:** any term that increases energy for (x, ŷ) when ŷ ≠ y. That omission is the entire pedagogical point.
-
-### 4.3 Visualization strategy
-
-`visualize.py` loads the checkpoint and:
-
-1. Fixes one training sample’s x (default: index 0).
-2. Evaluates F_w(x, y) on an 80×80 grid of y over [-3, 3]².
-3. Writes:
-   - `energy_heatmap.png` — raw energy over the plane (white scatter = training y points).
-   - `energy_deviation_heatmap.png` — F − mean(F) on the grid (highlights flat vs structured landscape).
-   - `energy_surface.png` — 3D plot of the same grid.
-   - `training_curve.png` — mean energy ± batch std vs epoch.
-
-This matches the plan’s three visualization bullets and adds a deviation map to make “flat collapse” easier to see when all energies are huge and negative.
-
-### 4.4 Hardware (MPS)
-
-Training and inference follow the **build-toy-model** skill: tensors moved to MPS, matplotlib inputs taken from `.cpu().numpy()`. On Apple Silicon (M5, 24 GB unified memory), this step is trivially small; the same `get_device()` helper carries forward to heavier steps (CIFAR, video).
+On MacBook Pro M5 (24 GB unified memory), this step is tiny; `get_device()` selects MPS for consistency with later image/video steps. Matplotlib always plots from CPU arrays.
 
 ---
 
-## 5. What we implemented
+## 5. Visualizations
+
+All figures are produced by `visualize.py` after loading `outputs/checkpoint.pt`. Default: **fix x** from training sample index 0; evaluate F on an **80×80** grid with y₁, y₂ ∈ [−3, 3]. Training data points are overlaid as **white scatter** (the Swiss roll in the plane).
+
+---
+
+### 5.1 `training_curve.png`
+
+| | |
+|--|--|
+| **What is plotted** | **X:** epoch (1–200). **Y:** mean F(x, y) over all training pairs each epoch. Shaded band: ±1 standard deviation of per-sample energies within the epoch. |
+| **How produced** | `train.py` writes `loss_history.json`; `visualize.py` calls `shared/viz.plot_training_curve()`. |
+| **How to read it** | Downward curve = energies decreasing on positives. Steep dive = collapse accelerating. Widening band = energies spreading in scale (runaway magnitudes), not learning a sharper manifold structure. |
+| **Expected in Step 1** | **Collapse:** curve plunges toward very large negative values (e.g. epoch 1 ≈ −31 → epoch 200 ≈ −2.56×10¹³ in our run). This is **not** “good convergence.” |
+| **Paper link** | Motivates §4.2: without terms that **raise** energy on bad pairs, training can only push positives lower without bound. |
+
+---
+
+### 5.2 `energy_heatmap.png`
+
+| | |
+|--|--|
+| **What is plotted** | **Axes:** y₁ (horizontal), y₂ (vertical). **Color:** F_w(x_fixed, y) at each grid cell. **Overlay:** all training y points (white dots) showing the Swiss roll. **Fixed:** one x from the dataset (default sample 0). |
+| **How produced** | `energy_grid()` in `visualize.py`: replicate x_fixed across the grid, batch forward through `EBM`, reshape to 80×80, `plot_energy_heatmap()`. |
+| **How to read it** | **Darker / “hotter” colors** in viridis = more negative energy in our run (color scale follows actual F values). You ask: *is there a **ridge or valley** that follows the white Swiss roll?* After Step 1, often **no** — large negative values appear broadly, not in a thin tube along the manifold. |
+| **Expected in Step 1 (collapsed)** | Broad regions of similarly extreme negative energy; manifold not clearly singled out as the unique low-energy locus. |
+| **Expected after Step 2 (contrastive)** | Valley **along** the roll, higher energy away from it — selective compatibility. |
+| **Paper link** | Direct picture of the **energy landscape over output space** for fixed context x (§4.1). |
+
+---
+
+### 5.3 `energy_deviation_heatmap.png`
+
+| | |
+|--|--|
+| **What is plotted** | Same grid and axes as `energy_heatmap.png`, but color encodes **F − mean(F)** over the grid (deviation from the grid’s mean energy). Same white Swiss roll overlay. |
+| **How produced** | Same grid as heatmap; pass `energies - energies.mean()` to `plot_energy_heatmap()`. |
+| **How to read it** | Removes the global offset when all F values are huge and negative. **Structure here** = relative compatibility: where is y slightly more/less preferred than average for this x? **Flat** map → model treats almost all y equally (relative collapse). **Structured** ridges along the roll → selective landscape. |
+| **Expected in Step 1** | Often modest relative structure (coefficient of variation on grid may still be ~0.3+); the key lesson is comparing to Step 2, not achieving a perfect flat sheet. |
+| **Paper link** | Clarifies “**constant** low energy everywhere” — collapse can mean flat *relative* landscape, not only identical absolute F. |
+
+---
+
+### 5.4 `energy_surface.png`
+
+| | |
+|--|--|
+| **What is plotted** | **3D surface:** y₁, y₂ on the base plane; height = F_w(x_fixed, y). Same 80×80 grid as heatmaps. |
+| **How produced** | `shared/viz.plot_energy_surface()` with the raw energy grid (not deviation). |
+| **How to read it** | View angle shows whether energy forms a **channel** along the roll or a flat/degenerate bowl. Peaks and valleys in 3D match peaks and valleys in the heatmap. |
+| **Expected in Step 1** | Often a dominated, skewed surface when F has run to extreme negatives — hard to interpret absolute height; use with heatmaps and deviation map. |
+| **Paper link** | Same landscape as §4.1; alternative view for intuition about “terrain” over y. |
+
+---
+
+## 6. What we implemented
 
 | File | Role |
 |------|------|
-| `experiments/step01_ebm/model.py` | `EBM` module: dual encoders + energy head |
-| `experiments/step01_ebm/train.py` | Naive training loop, checkpoint + history JSON |
-| `experiments/step01_ebm/visualize.py` | Energy landscapes and training curve |
-| `shared/device.py` | MPS/CPU selection |
-| `shared/data.py` | Swiss roll & circles pair generators |
-| `shared/modules.py` | Generic `MLP` builder |
-| `shared/viz.py` | Matplotlib helpers for heatmaps and curves |
-
-**Outputs directory** (`outputs/`):
-
-| Artifact | Purpose |
-|----------|---------|
-| `checkpoint.pt` | Weights + metadata (dataset name, seed, epochs) |
-| `loss_history.json` | Per-epoch mean/std energy |
-| `*.png` | Figures referenced below |
-| `explanation.md` | This document |
+| `experiments/step01_ebm/model.py` | `EBM` |
+| `experiments/step01_ebm/train.py` | Naive training |
+| `experiments/step01_ebm/visualize.py` | All figures in §5 |
+| `shared/device.py` | MPS/CPU |
+| `shared/data.py` | Swiss roll & circles |
+| `shared/modules.py` | `MLP` |
+| `shared/viz.py` | Plot helpers |
 
 ---
 
-## 6. Results and evidence
+## 7. Results and evidence
 
-### What “success” means for Step 1
+### Training metrics (Swiss roll, seed 42, 200 epochs)
 
-Step 1 is successful when you **observe collapse**, not when you get a good classifier or density model.
+| Epoch | Mean F(x, y) | Std (batch) |
+|-------|----------------|-------------|
+| 1 | −30.93 | 45.56 |
+| 200 | −2.56×10¹³ | 1.46×10¹³ |
 
-Typical behavior after 200 epochs (Swiss roll, default hyperparameters):
+See `outputs/loss_history.json` for the full series. Match against **`training_curve.png`**.
 
-| Epoch (approx.) | Mean F(x, y) | Interpretation |
-|-----------------|--------------|----------------|
-| 1 | ~−30 | Model already prefers lowering energy |
-| 10–50 | Large negative, growing fast | Unbounded descent |
-| 200 | Very large negative (e.g. −10¹³ order) | No floor in the architecture; optimizer keeps pushing F down |
+### Landscape metrics (console from `visualize.py`)
 
-The **training curve** (`training_curve.png`) should show a steep downward trend — often looking almost vertical on a linear y-axis once collapse accelerates. Batch std may also grow, reflecting runaway scales rather than meaningful structure.
+Typical after collapse: grid energies on the order of 10¹³ negative, with coefficient of variation (std / |mean|) often below ~0.4 — indicating limited **relative** structure vs the global plunge.
 
-### Energy landscape plots
+### How figures work together
 
-For a **fixed x**:
-
-- A **well-trained** compatibility model (after Step 2) should show a **valley** along the data manifold in y-space and higher energy elsewhere.
-- After **naive** Step 1 training, you often see:
-  - **Raw heatmap** (`energy_heatmap.png`): extremely negative values across much of the grid, with the manifold not clearly singled out.
-  - **Deviation heatmap** (`energy_deviation_heatmap.png`): structure relative to the grid mean — if collapse is severe, the map can still look relatively flat (low coefficient of variation), meaning the model is not carving a sharp “compatibility funnel” over y.
-
-The console reports grid statistics, e.g. energy range and CV = std / |mean|. A small CV suggests the landscape is **flat relative to its magnitude** — consistent with “everything is equally compatible” in the limit.
-
-### Connection to the plan’s key intuition
-
-> *Without a mechanism to push energies UP for incorrect y values, the model learns to make everything low energy.*
-
-Our implementation shows a stronger version of that: energies are not merely “low and equal” — they can **diverge to large negative values** because nothing in L = F(x, y) penalizes making F more negative forever. That is the same class of problem contrastive methods address by **repelling** wrong pairs.
+1. **`training_curve.png`** — proves optimization is doing what we asked (minimize positive energy) without fixing the landscape.
+2. **`energy_heatmap.png`** — asks whether that solution is **useful** (manifold-aligned valleys).
+3. **`energy_deviation_heatmap.png`** — strips global offset to test “everything equally compatible.”
+4. **`energy_surface.png`** — same story in 3D for geometric intuition.
 
 ---
 
-## 7. What this establishes
+## 8. What this establishes
 
-After completing Step 1, you should be able to:
+You can now:
 
-1. **Define** F_w(x, y) and explain compatibility vs incompatibility in the paper’s language.
-2. **Implement** a minimal EBM with separate encoders for heterogeneous inputs.
-3. **Visualize** an energy landscape over the output space y for fixed x.
-4. **Recognize collapse** from training logs and plots — not confuse it with “good convergence”.
-5. **Articulate why** a second training signal (contrastive negatives, regularizers, etc.) is required before EBMs become useful for representation learning.
+1. Define F_w(x, y) and compatibility in the paper’s terms.
+2. Explain what x and y **mean** in the toy and in later pipelines.
+3. Read each output plot and say what healthy vs collapsed behavior looks like.
+4. Recognize collapse from **numbers and figures**, not from loss going down alone.
+5. Justify contrastive training before representation learning.
 
-You have **not** yet established:
-
-- Discriminative structure over y (Step 2).
-- Embedding-space distance as energy (Step 3).
-- Prediction in representation space (Step 5+).
+Not yet established: discriminative landscapes (Step 2), embedding distance (Step 3), JEPA prediction (Step 5+).
 
 ---
 
-## 8. Connection to the paper (deeper reading)
+## 9. Connection to the paper
 
-### §4.1 in practice
+- **§4.1:** EBM as scorer; landscapes over y; not a generative normalized model.
+- **§4.2:** Table 1 losses exist because Step 1’s training signal is incomplete.
+- **§4.3+:** Two encoders foreshadow s_x, s_y before we predict in representation space.
+- **§3 (agent):** Scalar “cost” signals inherit the same collapse logic if everything is driven down without contrast.
 
-The paper’s EBM is a **scoring function**, not a generative model. Step 1 makes that concrete: we never sample y from exp(−F); we only **evaluate** F on pairs. That mindset carries through JEPA, where we care about **representation prediction** rather than pixel reconstruction.
-
-### Why §4.2 exists
-
-Table 1 in the appendix (contrastive losses: InfoNCE, hinge, logistic) assumes you already have F_w(x, y) and need a **training objective** that shapes the landscape. Step 1 explains *why* those rows exist: pairwise repulsion terms implement “pull up energy on contrastive samples” that naive minimization lacks.
-
-### Bridge to joint embeddings (§4.3+)
-
-Later, energy is often **distance in embedding space**: F(x, y) = ‖s_x − s_y‖². Step 1’s two encoders foreshadow that structure, but we keep a learned `energy_head` on the concatenation so the model is fully general — matching §4.1’s wording before the paper specializes to JEAs.
-
-### Bridge to the full agent (§3)
-
-The autonomous agent uses **cost** and **intrinsic cost** modules — scalar signals that shape behavior. EBMs are the low-level ancestor of “assign a scalar score to a configuration”. Understanding collapse prevents confusing “low cost everywhere” with “good planning”.
-
-### Misconceptions this step clears up
-
-| Misconception | Correction from Step 1 |
-|---------------|-------------------------|
-| “Lower loss = better model” | Here, lower loss = worse *useful* EBM (collapse). |
-| “EBM = energy-based generative model” | We never normalize or sample; we only score pairs. |
-| “We can skip contrastive training” | Naive training proves you cannot. |
+| Misconception | Correction |
+|---------------|------------|
+| Lower loss = better model | Here, lower = worse *useful* EBM |
+| EBM = sampler from exp(−F) | We only evaluate F |
+| Skip contrastive training | Step 1 shows you cannot |
 
 ---
 
-## 9. Limitations of this toy
+## 10. Limitations
 
-- **No negatives**, no MCMC, no score matching — only the broken positive-only baseline.
-- **Tiny MLPs**, not the convnets or transformers used in real perception stacks.
-- **Synthetic 2D data** — no high-dimensional y where contrastive sampling is expensive (the paper’s scaling argument in §4.2).
-- **Unbounded energy** — no architectural constraint (e.g. softplus, bounded head) to force “flat zero” collapse instead of “−∞” collapse; both illustrate the same conceptual failure.
-- **Single fixed x in default viz** — you can pass `--x-index` to explore others, but we do not aggregate landscapes over many x values.
-
-These limits are addressed in **Step 2: Contrastive Training of EBMs** (`experiments/step02_contrastive_ebm/`), which reuses the same `EBM` class and adds hinge, InfoNCE, and logistic losses plus negative sampling strategies.
+- Positive-only loss; no negatives.
+- 2D synthetic y only; no high-D contrastive sampling story yet.
+- Unbounded F; collapse shows as −∞ drift, not only flat zero.
+- Default viz uses one fixed x (`--x-index` to explore others).
 
 ---
 
-## 10. Next step
+## 11. Next step
 
-**Step 2** keeps the architecture identical and changes only the **objective**:
-
-- Push **down** F(x, y) on positives (as now).
-- Push **up** F(x, ŷ) on contrastive negatives ŷ (random, hard, or in-batch).
-
-You should see energy landscapes with **valleys on the data manifold** instead of indiscriminate collapse. That is the first moment the EBM becomes a **selective** compatibility function — the prerequisite for joint embeddings and JEPA.
+**Step 2** (`step02_contrastive_ebm`): same `EBM`, add hinge / InfoNCE / logistic and negatives (random, hard, in-batch). Revisit **`energy_heatmap.png`** — you should see a valley tracking the white Swiss roll.
 
 ---
 
 ## Reproduce
 
-From the repository root:
-
 ```bash
+cd /Users/gpmac/gpbuildspace/JEPA/jepa_2022
 uv run python experiments/step01_ebm/train.py
 uv run python experiments/step01_ebm/visualize.py
 ```
 
-Optional:
+Optional: `--dataset circles`, `--x-index 500`.
 
-```bash
-uv run python experiments/step01_ebm/train.py --dataset circles --epochs 200
-uv run python experiments/step01_ebm/visualize.py --x-index 500
-```
-
-After training, inspect `outputs/training_curve.png` first, then `outputs/energy_deviation_heatmap.png`, and read `outputs/loss_history.json` for numeric collapse evidence.
+After running, read this file alongside the four PNGs in order: training curve → heatmap → deviation heatmap → surface.
