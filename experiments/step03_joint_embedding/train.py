@@ -12,7 +12,11 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from experiments.step03_joint_embedding.model import JointEmbeddingModel, info_nce_loss
+from experiments.step03_joint_embedding.model import (
+    JointEmbeddingModel,
+    collapse_distance_loss,
+    info_nce_loss,
+)
 from shared.data import CIFAR10PairDataset
 from shared.device import get_device
 
@@ -39,6 +43,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--temperature", type=float, default=0.1)
+    parser.add_argument("--method", choices=["distance", "info_nce"], default="info_nce")
     parser.add_argument("--workers", type=int, default=2)
     args = parser.parse_args()
 
@@ -75,7 +80,12 @@ def main() -> None:
             x1, x2 = x1.to(device), x2.to(device)
             z1 = model(x1)
             z2 = model(x2)
-            loss = info_nce_loss(z1, z2, temperature=args.temperature)
+            if args.method == "distance":
+                # Use both positive and negative batch relationships.
+                # Collapse happens because the loss minimizes all pairwise distances.
+                loss = collapse_distance_loss(z1, z2)
+            else:
+                loss = info_nce_loss(z1, z2, temperature=args.temperature)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -99,10 +109,14 @@ def main() -> None:
         "lr": args.lr,
         "seed": args.seed,
         "temperature": args.temperature,
+        "method": args.method,
     }
-    torch.save(checkpoint, OUTPUT_DIR / "checkpoint.pt")
-    with open(OUTPUT_DIR / "loss_history.json", "w", encoding="utf-8") as f:
+    checkpoint_path = OUTPUT_DIR / f"checkpoint_{args.method}.pt"
+    history_path = OUTPUT_DIR / f"loss_history_{args.method}.json"
+    torch.save(checkpoint, checkpoint_path)
+    with open(history_path, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
+    print(f"Saved checkpoint to {checkpoint_path} and history to {history_path}")
     print(f"Saved checkpoint and history to {OUTPUT_DIR}")
 
 

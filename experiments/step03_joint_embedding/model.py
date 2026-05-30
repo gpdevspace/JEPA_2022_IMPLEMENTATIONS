@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class JointEmbeddingModel(nn.Module):
-    """Joint embedding architecture: shared encoder and distance-based energy."""
+    """Shared encoder for joint embedding training."""
 
     def __init__(self, embed_dim: int = 128):
         super().__init__()
@@ -28,19 +28,30 @@ class JointEmbeddingModel(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.encoder(x)
 
-    def energy(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        x_emb = self.forward(x)
-        y_emb = self.forward(y)
-        return torch.sum((x_emb - y_emb) ** 2, dim=1)
+    def energy_embeddings(self, z1: torch.Tensor, z2: torch.Tensor) -> torch.Tensor:
+        return torch.sum((z1 - z2) ** 2, dim=1)
+
+    def energy(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        z1 = self(x1)
+        z2 = self(x2)
+        return self.energy_embeddings(z1, z2)
 
 
-def info_nce_loss(
-    z1: torch.Tensor,
-    z2: torch.Tensor,
-    temperature: float = 0.1,
-) -> torch.Tensor:
-    z1 = F.normalize(z1, dim=1)
-    z2 = F.normalize(z2, dim=1)
+def collapse_distance_loss(z1: torch.Tensor, z2: torch.Tensor) -> torch.Tensor:
+    """Minimize squared distances for all cross-sample pairs, causing collapse."""
+    diff = z1.unsqueeze(1) - z2.unsqueeze(0)
+    distances = torch.sum(diff ** 2, dim=-1)
+    return torch.mean(distances)
+
+
+def normalize_embeddings(z: torch.Tensor, eps: float = 1e-08) -> torch.Tensor:
+    norm = torch.norm(z, dim=1, keepdim=True).clamp(min=eps)
+    return z / norm
+
+
+def info_nce_loss(z1: torch.Tensor, z2: torch.Tensor, temperature: float = 0.1) -> torch.Tensor:
+    z1 = normalize_embeddings(z1)
+    z2 = normalize_embeddings(z2)
     logits = torch.matmul(z1, z2.T) / temperature
     labels = torch.arange(z1.shape[0], device=z1.device)
     loss_a = F.cross_entropy(logits, labels)

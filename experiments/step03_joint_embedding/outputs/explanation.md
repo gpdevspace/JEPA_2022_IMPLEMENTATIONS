@@ -8,11 +8,11 @@
 
 ## 1. Paper anchor
 
-Step 3 implements a Joint Embedding Architecture (JEA) from §4.3. The paper describes a model that maps input pairs `(x, y)` into a shared embedding space and defines energy as a distance between the two representations. In the toy implementation here, the model learns embeddings for two augmented views of the same CIFAR-10 image and is trained so that matching views are closer than non-matching views.
+Step 3 implements a Joint Embedding Architecture (JEA) from §4.3. The paper describes a model that maps input pairs `(x, y)` into a shared embedding space and defines energy as a distance between the two representations. In the toy implementation here, the model learns embeddings for two augmented views of the same CIFAR-10 image. We compare two variants: a direct squared-distance energy loss that shows the collapse path, and an InfoNCE contrastive objective that recovers useful structure by using batch negatives.
 
 ## 2. Problem we solved
 
-This experiment answers the question: *How do we train an energy model by comparing embeddings instead of raw input pairs?* The Step 1 and Step 2 experiments operate in input space; Step 3 lifts the compatibility function into a shared representation space. The failure mode we avoid is embedding collapse, where a trivial representation makes all images appear identical. The training objective used here encourages positive pairs to match while discouraging negative pairs implicitly through InfoNCE.
+This experiment answers the question: *How do we train an energy model by comparing embeddings instead of raw input pairs?* The Step 1 and Step 2 experiments operate in input space; Step 3 lifts the compatibility function into a shared representation space. The first variant uses a direct squared-distance energy loss, and it demonstrates that the encoder can collapse even when both positive and negative batch relationships are present if the loss minimizes all pairwise distances. The second variant uses InfoNCE, which instead uses negatives to push different examples apart and so recovers a useful representation.
 
 ## 3. Data
 
@@ -63,42 +63,74 @@ This toy maps the later JEPA setting because CIFAR-10 images replace the raw per
 
 | Hyperparameter | Value |
 |----------------|-------|
-| Loss | InfoNCE on normalized embeddings |
+| Loss | squared distance energy or InfoNCE on normalized embeddings |
 | Optimizer | Adam |
 | Epochs | 30 |
 | Batch size | 128 |
 | Dataset subset | 10,000 CIFAR-10 examples |
 | Device | MPS when available |
-| Temperature | 0.1 |
+| Temperature | 0.1 (InfoNCE only) |
 
 Training is performed in `experiments/step03_joint_embedding/train.py`.
-Each batch produces positive pairs from two augmentations of the same image. The InfoNCE loss encourages the matching pair to have higher similarity than all other pairs in the batch.
+The compatibility energy is computed on the learned embeddings, not on raw images.
+Each batch produces positive pairs from two augmentations of the same image and also exposes negative samples through the other batch examples.
+The `distance` variant minimizes all squared distances across the batch, including negative pairs, which causes the embedding to collapse by making every point similar. The `info_nce` variant instead minimizes the positive pair similarity while maximizing the negative pair margin, which preserves structure.
 
 ## 5. Visualizations
 
-### 5.1 `training_curve.png`
+### 5.1 `training_curve_distance.png` / `training_curve_info_nce.png`
 
-- **What is plotted:** epoch-wise mean InfoNCE loss with batch standard deviation.
-- **How it was produced:** `experiments/step03_joint_embedding/visualize.py` reads `loss_history.json` and plots the loss curve.
-- **How to read it:** A falling curve means the model is learning to align positive embeddings and separate negatives.
-- **Expected in this step:** steady decline from a high initial loss to a lower stable value.
-- **Paper link:** shows that the joint embedding objective is being optimized, which is the core training behavior of JEA.
+- **What is plotted:** epoch-wise mean loss for each training variant.
+- **How it was produced:** `visualize.py` reads method-specific histories and plots them separately.
+- **How to read it:** a low direct-distance loss may hide collapse, while InfoNCE loss decline with preserved variance indicates recovery.
+- **Expected in this step:** the `distance` curve should fall rapidly and can still represent a collapsed model; the `info_nce` curve should fall while preserving embedding structure.
+- **Paper link:** shows that a naive energy loss is insufficient without negative structure.
 
-### 5.2 `embedding_tsne.png`
+### 5.2 `training_curve_comparison.png`
 
-- **What is plotted:** 2D t-SNE embedding of 1,000 CIFAR-10 examples.
-- **How it was produced:** `visualize.py` computes embeddings for a held-out set and projects them with t-SNE.
-- **How to read it:** colors indicate CIFAR-10 class labels; clusters indicate semantic grouping in embedding space.
-- **Expected in this step:** same-class points should be closer together than different-class points, showing the encoder learned useful structure.
-- **Paper link:** this is the first visualization of JEA representations, illustrating that the embedding space captures semantic similarity.
+- **What is plotted:** direct comparison of the two training losses on the same axes.
+- **How it was produced:** `visualize.py` overlays the `distance` and `info_nce` curves when both histories are present.
+- **How to read it:** the comparison makes the collapse path visible: the `distance` loss can reach a low value even though the embeddings are collapsed, while the `info_nce` loss declines with preserved variance.
+- **Expected in this step:** InfoNCE protects against collapse by keeping training aligned with a useful margin.
 
-### 5.3 `embedding_variance.png`
+### 5.3 `embedding_tsne_distance.png` / `embedding_tsne_info_nce.png`
 
-- **What is plotted:** variance of each embedding dimension over the sample subset.
+- **What is plotted:** 2D t-SNE embedding of 1,000 CIFAR-10 examples for each training variant.
+- **How it was produced:** `visualize.py` computes embeddings for a held-out set and projects them with t-SNE separately for both training methods.
+- **How to read it:** colors indicate CIFAR-10 class labels. The `distance` variant should show collapse or poor class separation, while `info_nce` should show more distinct clusters.
+- **Expected in this step:** the `distance` variant may collapse toward a small region of the embedding space; the `info_nce` variant should recover semantic structure.
+- **Paper link:** this visualizes the difference between a naive energy loss and contrastive recovery.
+
+### 5.4 `embedding_variance_distance.png` / `embedding_variance_info_nce.png`
+
+- **What is plotted:** variance of each embedding dimension over the sample subset, for both variants.
 - **How it was produced:** `visualize.py` computes the variance across embedding dimensions.
-- **How to read it:** higher variance in a dimension indicates that the model is using that dimension; near-zero variance would indicate collapse.
-- **Expected in this step:** a spread of variances across dimensions rather than all dims being uniform or near zero.
-- **Paper link:** helps verify that the joint embedding has useful dimensional structure and is not trivially collapsed.
+- **How to read it:** low variance means a dimension is unused. Collapse appears as many near-zero variances in the `distance` variant.
+- **Expected in this step:** the `distance` variant should have collapsed dimensions, while `info_nce` should retain more active dimensions.
+- **Paper link:** helps verify that the joint embedding preserves dimensional structure when negatives are used.
+
+### 5.5 `embedding_variance_comparison.png`
+
+- **What is plotted:** sorted embedding variances for both methods on the same axes.
+- **How it was produced:** `visualize.py` sorts the variance values and overlays them for direct comparison.
+- **How to read it:** the plot shows how many dimensions remain active; a collapsed model will have a steep drop-off.
+- **Expected in this step:** `info_nce` preserves more variance across dimensions than the collapsed `distance` baseline.
+
+### 5.6 `embedding_correlation_distance.png` / `embedding_correlation_info_nce.png`
+
+- **What is plotted:** the empirical correlation between embedding dimensions for each training variant.
+- **How it was produced:** `visualize.py` computes the feature correlation matrix from the learned embeddings.
+- **How to read it:** values near 1 on the diagonal and values near 0 off diagonal indicate a decorrelated representation. A collapsed `distance` model will show stronger off-diagonal structure.
+- **Expected in this step:** the `distance` variant should show more correlated dimensions, while `info_nce` should produce a cleaner correlation pattern.
+- **Paper link:** this plot highlights how InfoNCE provides a decorrelation effect that a raw energy loss does not.
+
+### 5.7 `energy_surface_distance.png` / `energy_surface_info_nce.png`
+
+- **What is plotted:** a 3D energy surface for a fixed reference embedding and a 2D manifold of candidate embeddings.
+- **How it was produced:** `visualize.py` projects the learned embeddings into two principal components, reconstructs a local embedding grid, and evaluates the model's energy on that grid.
+- **How to read it:** the surface shows where the model assigns low energy (high compatibility) around the reference. A collapsed `distance` model will have a broad flat basin, while the `info_nce` model should show a more structured compatibility landscape.
+- **Expected in this step:** the `distance` surface should look nearly uniformly low-energy, indicating the representation has collapsed and cannot distinguish different directions. The `info_nce` surface should show a sharper minimum and more variation, indicating recovery of a useful embedding geometry.
+- **Paper link:** this plot makes the collapse/recovery comparison explicit by visualizing the learned energy landscape rather than just summary statistics.
 
 ## 6. What we implemented
 
@@ -113,24 +145,24 @@ Each batch produces positive pairs from two augmentations of the same image. The
 
 ## 7. Results and evidence
 
-From the training run:
+From the training runs:
 
-- Epoch 0 mean loss: `1.8410`, std loss: `0.8808`
-- Epoch 1 mean loss: `0.7134`, std loss: `0.1391`
-- Epoch 29 mean loss: `0.1110`, std loss: `0.0179`
+- `distance` variant final loss: `0.000857`, indicating the batch-distance objective collapsed the embedding.
+- `info_nce` variant final loss: `0.167889`, indicating a stable contrastive representation.
 
-The loss dropped steadily, demonstrating that the encoder learned to align same-image views and separate other images in the batch. The final loss plateau at ~0.11 indicates a stable joint embedding objective on the CIFAR-10 subset.
+The direct distance objective minimizes all pairwise batch distances and therefore collapses the encoder even though negative samples are present. InfoNCE instead preserves structure by using negative batch examples to separate different images.
 
 ## 8. What this establishes
 
 - A JEA can be trained on image data using paired augmentations and an InfoNCE loss.
-- The shared encoder learns meaningful embeddings rather than collapsing to a constant.
-- The learned embeddings show semantic structure in the CIFAR-10 toy setting.
+- The shared encoder learns meaningful embeddings rather than collapsing to a constant when InfoNCE is used.
+- The direct squared-distance variant demonstrates the collapse path when the loss minimizes all pairwise batch distances, including negatives.
+- The learned embeddings show semantic structure in the CIFAR-10 toy setting for the InfoNCE variant.
 - This step transitions the curriculum from raw energy scoring to representation-based compatibility.
 
 ## 9. Connection to the paper
 
-This step implements §4.3’s key idea that energy can be defined by a distance in embedding space. It demonstrates how two views of the same underlying input can be pulled together in representation space, which is the basis for later JEPA and non-contrastive training methods.
+This step implements §4.3’s key idea that energy can be defined by a distance in embedding space. It also demonstrates the failure mode of direct distance minimization and the recovery obtained by using InfoNCE. This comparison is the basis for later JEPA and non-contrastive training methods.
 
 ## 10. Limitations of this toy
 
@@ -138,6 +170,10 @@ This step implements §4.3’s key idea that energy can be defined by a distance
 - Only a 10,000-image subset of CIFAR-10 was used for runtime efficiency.
 - The visualization uses t-SNE on 1,000 samples, which is a local view of the embedding space.
 - We do not yet introduce temporal prediction or latent-variable structure.
+
+### Curse of dimensionality for negatives
+
+In a 128-dimensional embedding space, explicitly sampling enough negatives is extremely difficult. The volume of a 128D ball grows so rapidly that random negatives concentrate on a thin shell, making them less informative. To cover the space meaningfully, you would need exponentially many negative samples in the embedding dimension. This is why InfoNCE uses batch-based implicit negatives instead of trying to exhaustively sample the full 128D space.
 
 ## 11. Next step
 
