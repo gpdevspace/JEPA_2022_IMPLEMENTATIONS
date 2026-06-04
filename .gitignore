@@ -13,3 +13,4 @@ __pycache__/
 *.pyzwz
 data/
 *.DS_Store
+misc/mnist_jepa
