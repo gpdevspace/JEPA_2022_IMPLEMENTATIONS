@@ -14,3 +14,4 @@ __pycache__/
 data/
 *.DS_Store
 misc/mnist_jepa
+*.npz
