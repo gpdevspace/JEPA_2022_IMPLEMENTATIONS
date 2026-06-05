@@ -77,7 +77,7 @@ def plot_training_curves(history: list[dict], out_path: Path) -> None:
     # Effective rank (collapse indicator)
     ax = axes[1, 0]
     s_y_pred_rank = [h["s_y_pred_effective_rank"] for h in history]
-    encoder_dim = history[0].get("encoder_dim", 512)
+    encoder_dim = history[0].get("encoder_dim", 1024)
     ax.plot(epochs, s_y_pred_rank, color="#9467bd", linewidth=2, label="Effective Rank")
     ax.axhline(y=encoder_dim, color="gray", linestyle="--", alpha=0.5, label="Max Rank")
     ax.axhline(y=encoder_dim * 0.1, color="red", linestyle="--", alpha=0.5, label="Collapse Threshold")

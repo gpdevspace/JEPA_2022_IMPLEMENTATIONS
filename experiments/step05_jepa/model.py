@@ -9,7 +9,7 @@ from typing import Literal, Tuple
 class Encoder(nn.Module):
     """CNN encoder for CIFAR-10 images."""
 
-    def __init__(self, encoder_dim: int = 512):
+    def __init__(self, encoder_dim: int = 1024):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
@@ -23,9 +23,14 @@ class Encoder(nn.Module):
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(128, encoder_dim),
+            nn.Linear(256, 1024),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -35,7 +40,7 @@ class Encoder(nn.Module):
 class Predictor(nn.Module):
     """MLP predictor that maps s_x to predicted s_y."""
 
-    def __init__(self, embedding_dim: int = 512, hidden_dim: int = 256):
+    def __init__(self, embedding_dim: int = 1024, hidden_dim: int = 2048):
         super().__init__()
         self.predictor = nn.Sequential(
             nn.Linear(embedding_dim, hidden_dim),
@@ -65,8 +70,8 @@ class JEPA(nn.Module):
 
     def __init__(
         self,
-        encoder_dim: int = 512,
-        predictor_hidden: int = 256,
+        encoder_dim: int = 1024,
+        predictor_hidden: int = 2048,
         shared_encoder: bool = True,
     ):
         super().__init__()
@@ -99,7 +104,7 @@ class JEPA(nn.Module):
         """
         s_x = self.encoder_x(x)
         s_y = self.encoder_y(y)
-        s_y_pred = self.predictor(s_x)
+        s_y_pred = s_x+self.predictor(s_x)
         return s_x, s_y, s_y_pred
 
     def embed(self, x: torch.Tensor) -> torch.Tensor:

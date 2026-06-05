@@ -50,8 +50,8 @@ def main() -> None:
     )
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--save-embeddings-every", type=int, default=10)
-    parser.add_argument("--encoder-dim", type=int, default=512)
-    parser.add_argument("--predictor-hidden", type=int, default=256)
+    parser.add_argument("--encoder-dim", type=int, default=1024)
+    parser.add_argument("--predictor-hidden", type=int, default=2048)
     args = parser.parse_args()
 
     device = get_device()
