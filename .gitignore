@@ -15,3 +15,5 @@ data/
 *.DS_Store
 misc/mnist_jepa
 *.npz
+.aider*
+experiments/step06_latent_var_JEPA/outputs

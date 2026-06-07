@@ -111,45 +111,41 @@ def concentric_circles_pairs(
 
 
 class MovingMNISTDataset(Dataset):
-    """Synthetic Moving MNIST: 2 digits bouncing on 28×28 canvas with random velocities."""
+    """Synthetic Moving MNIST: 2 digits bouncing on a 64×64 canvas with random velocities."""
 
     def __init__(
         self,
         n_sequences: int = 1000,
         seq_length: int = 10,
-        image_size: int = 28,
+        image_size: int = 64,       # Canvas must be larger than digit size (28)
+        digit_size: int = 28,       # MNIST digit size (fixed)
         num_digits: int = 2,
         seed: int = 42,
         device: str = "cpu",
     ):
-        """
-        Args:
-            n_sequences: Number of video sequences to generate
-            seq_length: Frames per sequence
-            image_size: Canvas size (28x28 for MNIST)
-            num_digits: Number of moving digits per sequence
-            seed: Random seed
-            device: 'cpu' or 'mps' (for on-the-fly generation)
-        """
         self.n_sequences = n_sequences
         self.seq_length = seq_length
         self.image_size = image_size
+        self.digit_size = digit_size
         self.num_digits = num_digits
         self.seed = seed
         self.device = device
 
-        # Load MNIST digits once
+        assert image_size > digit_size, \
+            f"image_size ({image_size}) must be larger than digit_size ({digit_size})"
+
         mnist_data = torchvision.datasets.MNIST(
             root="./data",
             train=True,
             download=True,
             transform=transforms.ToTensor(),
         )
-        # Extract unique digits: shape (10, n_per_digit, 1, 28, 28)
         self.mnist_digits = {}
         for i in range(10):
             digit_images = [img for img, lbl in mnist_data if lbl == i]
-            self.mnist_digits[i] = torch.cat([img.unsqueeze(0) for img in digit_images[:100]], dim=0)
+            self.mnist_digits[i] = torch.cat(
+                [img.unsqueeze(0) for img in digit_images[:100]], dim=0
+            )
 
         self.rng = np.random.default_rng(seed)
 
@@ -159,69 +155,65 @@ class MovingMNISTDataset(Dataset):
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Returns:
-            x: Stacked 4 frames [t-3, t-2, t-1, t] (4, 28, 28) normalized
-            y: Single future frame [t+1] (1, 28, 28) normalized
+            x: Stacked 4 frames [t-3, t-2, t-1, t] shape (4, H, W)
+            y: Single future frame [t+1]               shape (1, H, W)
         """
-        # Generate a single sequence
-        seq = self._generate_sequence(idx)  # (seq_length, 1, 28, 28)
+        seq = self._generate_sequence(idx)  # (seq_length, 1, H, W)
 
-        # Extract frames: input is t-3:t+1, output is t+1
-        # Indices: 0=t-3, 1=t-2, 2=t-1, 3=t, 4=t+1
-        x = torch.cat([seq[0], seq[1], seq[2], seq[3]], dim=0)  # (4, 28, 28)
-        y = seq[4]  # (1, 28, 28)
+        x = torch.cat([seq[0], seq[1], seq[2], seq[3]], dim=0)  # (4, H, W)
+        y = seq[4]                                                # (1, H, W)
 
-        # Reshape x and y to have the same number of channels
-        x = x.unsqueeze(0)  # (1, 4, 28, 28)
-        y = y.unsqueeze(0)  # (1, 1, 28, 28)
+        x = x.unsqueeze(0)  # (1, 4, H, W)
+        y = y.unsqueeze(0)  # (1, 1, H, W)
 
         return x, y
 
     def _generate_sequence(self, idx: int) -> torch.Tensor:
-        """Generate one sequence of moving digits."""
+        """Generate one sequence of bouncing digits on a larger canvas."""
         rng = np.random.default_rng(self.seed + idx)
 
-        # Initialize canvas
-        frames = []
-        positions = []
-        velocities = []
+        max_pos = self.image_size - self.digit_size   # e.g. 64 - 28 = 36
 
-        # Random digit IDs and starting positions/velocities
+        # Random digit IDs
         digit_ids = rng.integers(0, 10, size=self.num_digits)
-        for _ in range(self.num_digits):
-            pos = rng.uniform(0, self.image_size - 28, size=2)
-            vel = rng.uniform(-2, 2, size=2)
-            positions.append(pos)
-            velocities.append(vel)
 
-        # Generate frames
+        # Initial positions within valid range, and velocities
+        positions  = [rng.uniform(0, max_pos, size=2) for _ in range(self.num_digits)]
+        velocities = [rng.uniform(-4, 4, size=2) for _ in range(self.num_digits)]
+
+        frames = []
         for t in range(self.seq_length):
             canvas = torch.zeros(1, self.image_size, self.image_size)
 
-            # Move and render each digit
             for i, digit_id in enumerate(digit_ids):
-                # Update position
-                pos = np.array(positions[i]) + np.array(velocities[i]) * t
-                pos = np.clip(pos, 0, self.image_size - 28)
+                # --- Bounce physics: update position, reflect off walls ---
+                positions[i]  = positions[i] + velocities[i]
 
-                # Get random MNIST digit image
+                for axis in range(2):
+                    if positions[i][axis] < 0:
+                        positions[i][axis]  = -positions[i][axis]        # reflect
+                        velocities[i][axis] = -velocities[i][axis]
+                    elif positions[i][axis] > max_pos:
+                        positions[i][axis]  = 2 * max_pos - positions[i][axis]
+                        velocities[i][axis] = -velocities[i][axis]
+
+                # Pick a random sample of this digit class
                 digit_idx = rng.integers(0, len(self.mnist_digits[digit_id]))
                 digit_img = self.mnist_digits[digit_id][digit_idx]  # (1, 28, 28)
 
                 # Composite onto canvas
-                y_start, x_start = int(pos[1]), int(pos[0])
-                y_end, x_end = y_start + 28, x_start + 28
-                canvas[:, y_start:y_end, x_start:x_end] = torch.maximum(
-                    canvas[:, y_start:y_end, x_start:x_end],
+                y0 = int(positions[i][1])
+                x0 = int(positions[i][0])
+                canvas[:, y0:y0 + self.digit_size, x0:x0 + self.digit_size] = torch.maximum(
+                    canvas[:, y0:y0 + self.digit_size, x0:x0 + self.digit_size],
                     digit_img,
                 )
 
-            # Add brightness/contrast variation (augmentation)
             brightness = rng.uniform(0.8, 1.0)
             canvas = torch.clamp(canvas * brightness, 0, 1)
-
             frames.append(canvas)
 
-        return torch.stack(frames, dim=0)  # (seq_length, 1, 28, 28)
+        return torch.stack(frames, dim=0)  # (seq_length, 1, H, W)
 
 
 def make_dataset(
