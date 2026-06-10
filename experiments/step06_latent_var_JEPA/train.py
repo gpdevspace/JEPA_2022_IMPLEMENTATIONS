@@ -40,7 +40,12 @@ def train_jepa(
     lr: float = 1e-3,
 ) -> dict[str, list[float]]:
     """Train JEPA model with auxiliary reconstruction loss."""
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(
+        list(model.encoder_x.parameters())+
+        list(model.encoder_y.parameters())+
+        list(model.predictor.parameters())+
+        list(model.decoder.parameters()),
+        lr=lr)
     model = model.to(device)
 
     history: dict[str, list[float]] = {
@@ -64,6 +69,7 @@ def train_jepa(
             s_x, s_y, s_y_pred, loss, y_recon, recon_loss = model(x, y, return_recon=True)
             loss.backward()
             optimizer.step()
+            model.update_ema(model.encoder_y, model.target_encoder)
 
             train_losses.append(loss.item())
 
@@ -114,7 +120,12 @@ def train_generative(
     lr: float = 1e-3,
 ) -> dict[str, list[float]]:
     """Train generative (pixel-space) model."""
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(
+        list(model.encoder_x.parameters())+
+        list(model.encoder_y.parameters())+
+        list(model.predictor.parameters())+
+        list(model.decoder.parameters()),
+        lr=lr)
     model = model.to(device)
 
     history: dict[str, list[float]] = {"train_loss": [], "val_loss": []}
@@ -132,6 +143,7 @@ def train_generative(
             y_recon, loss = model(y)
             loss.backward()
             optimizer.step()
+            model.update_ema(model.encoder_y, model.target_encoder)
 
             train_losses.append(loss.item())
 
@@ -165,10 +177,10 @@ def main() -> None:
     )
     parser.add_argument("--quick",         action="store_true",  help="Quick mode: small dataset, few epochs")
     parser.add_argument("--epochs",        type=int,   default=30,    help="Number of epochs")
-    parser.add_argument("--batch-size",    type=int,   default=128,   help="Batch size")
+    parser.add_argument("--batch-size",    type=int,   default=256,   help="Batch size")
     parser.add_argument("--lr",            type=float, default=1e-3,  help="Learning rate")
     parser.add_argument("--seed",          type=int,   default=42,    help="Random seed")
-    parser.add_argument("--embedding-dim", type=int,   default=128,   help="Embedding dimension")
+    parser.add_argument("--embedding-dim", type=int,   default=256,   help="Embedding dimension")
     parser.add_argument("--hidden-dim",    type=int,   default=512,   help="Hidden dimension for predictor")
     parser.add_argument("--workers",       type=int,   default=2,     help="Data loader workers")
 
