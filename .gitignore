@@ -17,3 +17,4 @@ misc/mnist_jepa
 *.npz
 .aider*
 experiments/step06_latent_var_JEPA/outputs
+experiments/step05_jepa

@@ -39,13 +39,32 @@ def train_jepa(
     device: torch.device,
     lr: float = 1e-3,
 ) -> dict[str, list[float]]:
-    """Train JEPA model with auxiliary reconstruction loss."""
+    """Train JEPA model."""
     optimizer = optim.Adam(
-        list(model.encoder_x.parameters())+
-        list(model.encoder_y.parameters())+
-        list(model.predictor.parameters())+
-        list(model.decoder.parameters()),
-        lr=lr)
+        list(model.encoder_x.parameters()) +
+        list(model.encoder_y.parameters()) +
+        list(model.projector.parameters()) +
+        list(model.predictor.parameters()),
+        lr=lr
+    )
+
+#     optimizer = torch.optim.AdamW(
+#     [
+#         {
+#             "params": (
+#                 list(model.encoder_x.parameters())
+#                 + list(model.encoder_y.parameters())
+#                 + list(model.projector.parameters())
+#             ),
+#             "weight_decay": 1e-4,   # tune between 1e-5 and 1e-3
+#         },
+#         {
+#             "params": model.predictor.parameters(),
+#             "weight_decay": 0.0,    # no weight decay
+#         },
+#     ],
+#     lr=lr,
+# )
     model = model.to(device)
 
     history: dict[str, list[float]] = {
@@ -60,41 +79,44 @@ def train_jepa(
         train_losses: list[float] = []
 
         for x, y in tqdm(train_loader, desc=f"JEPA Train Epoch {epoch+1}/{epochs}"):
-            # __getitem__ returns x: (1, 4, H, W) and y: (1, 1, H, W)
-            # The leading "1" is a spurious channel dim — squeeze it out.
+            # squeeze out spurious channel dimension
             x = x.squeeze(1).to(device)   # (batch, 4, 64, 64)
             y = y.squeeze(1).to(device)   # (batch, 1, 64, 64)
 
             optimizer.zero_grad()
-            s_x, s_y, s_y_pred, loss, y_recon, recon_loss = model(x, y, return_recon=True)
+            outputs = model(x, y)
+            loss = outputs["loss"]
             loss.backward()
             optimizer.step()
-            model.update_ema(model.encoder_y, model.target_encoder)
+            model.update_ema(
+                model.encoder_y,
+                model.target_encoder,
+                momentum=0.999,
+            )
+            optimizer.zero_grad()
 
             train_losses.append(loss.item())
 
         # ── Validate ─────────────────────────────────────────────────────────
         model.eval()
         val_losses: list[float] = []
-        all_s_x, all_s_y, all_s_y_pred = [], [], []
+        all_s_x, all_s_y = [], []
 
         with torch.no_grad():
             for x, y in val_loader:
                 x = x.squeeze(1).to(device)   # (batch, 4, 64, 64)
                 y = y.squeeze(1).to(device)   # (batch, 1, 64, 64)
 
-                s_x, s_y, s_y_pred, loss, _, _ = model(x, y, return_recon=True)
-                val_losses.append(loss.item())
+                outputs = model(x, y)
+                val_losses.append(outputs["loss"].item())
 
-                all_s_x.append(s_x.cpu())
-                all_s_y.append(s_y.cpu())
-                all_s_y_pred.append(s_y_pred.cpu())
+                all_s_x.append(outputs["s_x"].cpu())
+                all_s_y.append(outputs["s_y"].cpu())
 
         # ── Metrics ──────────────────────────────────────────────────────────
-        s_x_all       = torch.cat(all_s_x,      dim=0)
-        s_y_all       = torch.cat(all_s_y,      dim=0)
-        s_y_pred_all  = torch.cat(all_s_y_pred, dim=0)
-        metrics = model.compute_metrics(s_x_all, s_y_all, s_y_pred_all)
+        s_x_all = torch.cat(all_s_x, dim=0)
+        s_y_all = torch.cat(all_s_y, dim=0)
+        metrics = model.compute_metrics(s_x_all, s_y_all)
 
         train_loss = float(np.mean(train_losses))
         val_loss   = float(np.mean(val_losses))
@@ -120,12 +142,7 @@ def train_generative(
     lr: float = 1e-3,
 ) -> dict[str, list[float]]:
     """Train generative (pixel-space) model."""
-    optimizer = optim.Adam(
-        list(model.encoder_x.parameters())+
-        list(model.encoder_y.parameters())+
-        list(model.predictor.parameters())+
-        list(model.decoder.parameters()),
-        lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     model = model.to(device)
 
     history: dict[str, list[float]] = {"train_loss": [], "val_loss": []}
@@ -136,14 +153,12 @@ def train_generative(
         train_losses: list[float] = []
 
         for x, y in tqdm(train_loader, desc=f"Gen Train Epoch {epoch+1}/{epochs}"):
-            # Generative model only uses y; still squeeze the spurious dim.
             y = y.squeeze(1).to(device)   # (batch, 1, 64, 64)
 
             optimizer.zero_grad()
             y_recon, loss = model(y)
             loss.backward()
             optimizer.step()
-            model.update_ema(model.encoder_y, model.target_encoder)
 
             train_losses.append(loss.item())
 

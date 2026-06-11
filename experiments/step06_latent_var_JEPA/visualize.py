@@ -173,10 +173,10 @@ def extract_embeddings_jepa(
     val_loader: DataLoader,
     device: torch.device,
     n_samples: int = 500,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Collect s_x, s_y, ŝ_y from the validation set."""
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Collect s_x, s_y, z_target, z_pred from the validation set."""
     model.eval()
-    all_s_x, all_s_y, all_s_y_pred = [], [], []
+    all_s_x, all_s_y, all_z_target, all_z_pred = [], [], [], []
     collected = 0
 
     with torch.no_grad():
@@ -186,52 +186,51 @@ def extract_embeddings_jepa(
             x = x.squeeze(1).to(device)
             y = y.squeeze(1).to(device)
 
-            s_x, s_y, s_y_pred, _ = model(x, y)
-            all_s_x.append(s_x.cpu().numpy())
-            all_s_y.append(s_y.cpu().numpy())
-            all_s_y_pred.append(s_y_pred.cpu().numpy())
+            outputs = model(x, y)
+            all_s_x.append(outputs["s_x"].cpu().numpy())
+            all_s_y.append(outputs["s_y"].cpu().numpy())
+            all_z_target.append(outputs["z_target"].cpu().numpy())
+            all_z_pred.append(outputs["z_pred"].cpu().numpy())
             collected += x.shape[0]
 
     s_x      = np.vstack(all_s_x)[:n_samples]
     s_y      = np.vstack(all_s_y)[:n_samples]
-    s_y_pred = np.vstack(all_s_y_pred)[:n_samples]
-    return s_x, s_y, s_y_pred
+    z_target = np.vstack(all_z_target)[:n_samples]
+    z_pred   = np.vstack(all_z_pred)[:n_samples]
+    return s_x, s_y, z_target, z_pred
 
 
 def plot_embedding_space_jepa(
-    s_x: np.ndarray,
-    s_y: np.ndarray,
-    s_y_pred: np.ndarray,
+    z_target: np.ndarray,
+    z_pred: np.ndarray,
 ) -> None:
-    """t-SNE scatter of s_x, s_y, ŝ_y.
+    """t-SNE scatter of z_target, z_pred.
 
-    A well-trained JEPA should have ŝ_y (red) sitting on top of s_y (green).
-    Arrows connect each (s_y, ŝ_y) pair so you can see the residual error.
+    A well-trained JEPA should have z_pred (red) sitting on top of z_target (green).
+    Arrows connect each (z_target, z_pred) pair so you can see the residual error.
     """
     print("Computing t-SNE (may take ~1 min)…")
-    all_emb   = np.vstack([s_x, s_y, s_y_pred])
+    all_emb   = np.vstack([z_target, z_pred])
     tsne      = TSNE(n_components=2, random_state=42, perplexity=30, max_iter=1000)
     emb_2d    = tsne.fit_transform(all_emb)
 
-    n         = s_x.shape[0]
-    s_x_2d    = emb_2d[:n]
-    s_y_2d    = emb_2d[n:2*n]
-    s_yp_2d   = emb_2d[2*n:]
+    n         = z_target.shape[0]
+    z_target_2d = emb_2d[:n]
+    z_pred_2d   = emb_2d[n:]
 
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.scatter(s_x_2d[:, 0],  s_x_2d[:, 1],  alpha=0.45, s=25, label="s_x (past)",            color="steelblue")
-    ax.scatter(s_y_2d[:, 0],  s_y_2d[:, 1],  alpha=0.45, s=25, label="s_y (true future)",      color="seagreen")
-    ax.scatter(s_yp_2d[:, 0], s_yp_2d[:, 1], alpha=0.45, s=25, label="ŝ_y (predicted future)", color="tomato")
+    ax.scatter(z_target_2d[:, 0],  z_target_2d[:, 1],  alpha=0.45, s=25, label="z_target (true future)",      color="seagreen")
+    ax.scatter(z_pred_2d[:, 0], z_pred_2d[:, 1], alpha=0.45, s=25, label="z_pred (predicted future)", color="tomato")
 
-    # Arrows: s_y → ŝ_y for first 60 samples
+    # Arrows: z_target → z_pred for first 60 samples
     for i in range(min(60, n)):
         ax.annotate("",
-                    xy=s_yp_2d[i], xytext=s_y_2d[i],
+                    xy=z_pred_2d[i], xytext=z_target_2d[i],
                     arrowprops=dict(arrowstyle="->", color="gray", alpha=0.25, lw=0.8))
 
     ax.set_xlabel("t-SNE 1", fontsize=12)
     ax.set_ylabel("t-SNE 2", fontsize=12)
-    ax.set_title("JEPA: Embedding Space — ŝ_y should cluster on top of s_y",
+    ax.set_title("JEPA: Projector Space — z_pred should cluster on top of z_target",
                  fontsize=13, fontweight="bold")
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.3)
@@ -240,7 +239,7 @@ def plot_embedding_space_jepa(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Plot 5 — JEPA embedding heatmaps (s_y vs ŝ_y per sample)
+# Plot 5 — JEPA embedding heatmaps (z_target vs z_pred per sample)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_jepa_embedding_heatmaps(
@@ -249,9 +248,9 @@ def plot_jepa_embedding_heatmaps(
     device: torch.device,
     n_display: int = 8,
 ) -> None:
-    """3-row panel per sample: input frame | s_y heatmap | ŝ_y heatmap.
+    """3-row panel per sample: input frame | z_target heatmap | z_pred heatmap.
 
-    The embedding vectors are reshaped to a 2-D grid purely for visual
+    The projector vectors are reshaped to a 2-D grid purely for visual
     comparison; closeness between row 2 and row 3 indicates good prediction.
     """
     jepa_model.eval()
@@ -261,18 +260,18 @@ def plot_jepa_embedding_heatmaps(
         x = x.squeeze(1).to(device)
         y = y.squeeze(1).to(device)
 
-        s_x, s_y, s_y_pred, _ = jepa_model(x, y)
+        outputs = jepa_model(x, y)
+        z_target = outputs["z_target"].cpu().numpy()
+        z_pred   = outputs["z_pred"].cpu().numpy()
 
         x        = x.cpu()
-        s_y      = s_y.cpu().numpy()
-        s_y_pred = s_y_pred.cpu().numpy()
 
-    embedding_dim = s_y.shape[1]
-    # Pick a grid shape that tiles the embedding dimension neatly
-    grid_cols = 16
-    grid_rows = embedding_dim // grid_cols   # e.g. 128 // 16 = 8
+    projector_dim = z_target.shape[1]
+    # Pick a grid shape that tiles the projector dimension neatly
+    grid_cols = 32
+    grid_rows = projector_dim // grid_cols   # e.g. 1024 // 32 = 32
 
-    pred_errors = np.sqrt(np.mean((s_y - s_y_pred) ** 2, axis=1))
+    pred_errors = np.sqrt(np.mean((z_target - z_pred) ** 2, axis=1))
     n_display   = min(n_display, x.shape[0])
 
     fig, axes = plt.subplots(3, n_display, figsize=(2.2 * n_display, 7))
@@ -284,125 +283,45 @@ def plot_jepa_embedding_heatmaps(
         axes[0, i].axis("off")
 
         # Common colour scale so rows 1 and 2 are directly comparable
-        vmin = min(s_y[i].min(), s_y_pred[i].min())
-        vmax = max(s_y[i].max(), s_y_pred[i].max())
+        vmin = min(z_target[i].min(), z_pred[i].min())
+        vmax = max(z_target[i].max(), z_pred[i].max())
 
-        # Row 1: s_y (true)
+        # Row 1: z_target (true)
         im1 = axes[1, i].imshow(
-            s_y[i].reshape(grid_rows, grid_cols),
+            z_target[i].reshape(grid_rows, grid_cols),
             cmap="RdBu_r", vmin=vmin, vmax=vmax,
         )
-        axes[1, i].set_title("s_y\n(true)", fontsize=8)
+        axes[1, i].set_title("z_target\n(true)", fontsize=8)
         axes[1, i].axis("off")
 
-        # Row 2: ŝ_y (predicted)
+        # Row 2: z_pred (predicted)
         im2 = axes[2, i].imshow(
-            s_y_pred[i].reshape(grid_rows, grid_cols),
+            z_pred[i].reshape(grid_rows, grid_cols),
             cmap="RdBu_r", vmin=vmin, vmax=vmax,
         )
-        axes[2, i].set_title(f"ŝ_y\nerr={pred_errors[i]:.3f}", fontsize=8)
+        axes[2, i].set_title(f"z_pred\nerr={pred_errors[i]:.3f}", fontsize=8)
         axes[2, i].axis("off")
 
     # One shared colorbar on the right
     fig.colorbar(im2, ax=axes[1:, -1], fraction=0.05, pad=0.04, label="Activation")
 
-    plt.suptitle("JEPA: Embedding Heatmaps — s_y (true) vs ŝ_y (predicted)",
+    plt.suptitle("JEPA: Projector Heatmaps — z_target (true) vs z_pred (predicted)",
                  fontsize=13, fontweight="bold")
     plt.tight_layout()
     _save(fig, "jepa_embedding_heatmaps.png")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Plot 6 — JEPA pixel-space decode panel  [NEW]
-# ──────────────────────────────────────────────────────────────────────────────
-
-def plot_jepa_pixel_decode(
-    jepa_model: JEPAModel,
-    val_loader: DataLoader,
-    device: torch.device,
-    n_display: int = 8,
-) -> None:
-    """Decode s_y and ŝ_y back to pixel space for visual comparison.
-
-    Even though JEPA trains in embedding space, the auxiliary decoder lets us
-    peek at what the embeddings "look like" as images.
-
-    Row layout:
-        0 — Ground truth y (target frame)
-        1 — Decode(s_y):      how well the encoder captures y
-        2 — Decode(ŝ_y):      how well the predictor approximates s_y
-        3 — |Decode(s_y) − Decode(ŝ_y)|  error map
-    """
-    jepa_model.eval()
-
-    with torch.no_grad():
-        x, y = next(iter(val_loader))
-        x = x.squeeze(1).to(device)
-        y = y.squeeze(1).to(device)
-
-        s_x, s_y, s_y_pred, _ = jepa_model(x, y)
-
-        dec_sy    = jepa_model.decode_embedding(s_y)       # (B, 1, H, W)
-        dec_sy_p  = jepa_model.decode_embedding(s_y_pred)  # (B, 1, H, W)
-
-        y         = y.cpu().numpy()
-        dec_sy    = dec_sy.cpu().numpy()
-        dec_sy_p  = dec_sy_p.cpu().numpy()
-
-    n_display = min(n_display, y.shape[0])
-    fig, axes = plt.subplots(4, n_display, figsize=(2.2 * n_display, 9))
-
-    row_labels = [
-        "Ground truth y",
-        "Decode(s_y)  — encoder quality",
-        "Decode(ŝ_y)  — predictor quality",
-        "|Decode(s_y) − Decode(ŝ_y)|  error",
-    ]
-
-    for i in range(n_display):
-        gt    = y[i, 0]
-        recon = dec_sy[i, 0]
-        pred  = dec_sy_p[i, 0]
-        err   = np.abs(recon - pred)
-
-        psnr = _psnr(gt, pred)
-
-        axes[0, i].imshow(gt,    cmap="gray", vmin=0, vmax=1)
-        axes[1, i].imshow(recon, cmap="gray", vmin=0, vmax=1)
-        axes[2, i].imshow(pred,  cmap="gray", vmin=0, vmax=1)
-        axes[3, i].imshow(err,   cmap="hot",  vmin=0, vmax=0.5)
-
-        for row in range(4):
-            axes[row, i].axis("off")
-
-        axes[2, i].set_title(f"PSNR {psnr:.1f} dB", fontsize=8)
-
-    for row, label in enumerate(row_labels):
-        axes[row, 0].set_ylabel(label, fontsize=8, rotation=0,
-                                labelpad=140, va="center")
-
-    plt.suptitle("JEPA: Pixel-Space Decode Panel (auxiliary decoder)",
-                 fontsize=13, fontweight="bold")
-    plt.tight_layout()
-    _save(fig, "jepa_pixel_decode.png")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Plot 7 — Per-dimension prediction error  [NEW]
+# Plot 6 — Per-dimension prediction error
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_per_dimension_error(
-    s_y: np.ndarray,
-    s_y_pred: np.ndarray,
+    z_target: np.ndarray,
+    z_pred: np.ndarray,
 ) -> None:
-    """Bar chart of mean squared error per embedding dimension.
-
-    Reveals which dimensions of the embedding space the predictor struggles
-    with most. Consistently high-error dimensions may represent aspects of
-    motion that are hard to predict (e.g. digit identity changes, overlaps).
-    """
-    # per-dim MSE: (embedding_dim,)
-    per_dim_mse = np.mean((s_y - s_y_pred) ** 2, axis=0)
+    """Bar chart of mean squared error per projector dimension."""
+    # per-dim MSE: (projector_dim,)
+    per_dim_mse = np.mean((z_target - z_pred) ** 2, axis=0)
     dims        = np.arange(len(per_dim_mse))
 
     # Sort descending so the hardest dimensions are on the left
@@ -437,22 +356,17 @@ def plot_per_dimension_error(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Plot 8 — Cosine similarity distribution  [NEW]
+# Plot 7 — Cosine similarity distribution
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_cosine_similarity_distribution(
-    s_y: np.ndarray,
-    s_y_pred: np.ndarray,
+    z_target: np.ndarray,
+    z_pred: np.ndarray,
 ) -> None:
-    """Histogram of cos(s_y, ŝ_y) across the validation set.
-
-    A well-trained JEPA predictor should have nearly all samples near 1.0.
-    A wide or left-shifted distribution means the predictor is off in direction,
-    not just magnitude — a sign of poor training or representation collapse.
-    """
-    s_y_t    = torch.from_numpy(s_y).float()
-    s_yp_t   = torch.from_numpy(s_y_pred).float()
-    cos_sims = F.cosine_similarity(s_y_t, s_yp_t, dim=1).numpy()  # (N,)
+    """Histogram of cos(z_target, z_pred) across the validation set."""
+    z_target_t = torch.from_numpy(z_target).float()
+    z_pred_t   = torch.from_numpy(z_pred).float()
+    cos_sims = F.cosine_similarity(z_target_t, z_pred_t, dim=1).numpy()  # (N,)
 
     mean_cos = cos_sims.mean()
     med_cos  = np.median(cos_sims)
@@ -465,7 +379,7 @@ def plot_cosine_similarity_distribution(
                label=f"Median = {med_cos:.3f}")
     ax.axvline(x=1.0,      color="green",  linestyle=":",  linewidth=2,
                label="Perfect = 1.0")
-    ax.set_xlabel("Cosine Similarity (s_y · ŝ_y)", fontsize=12)
+    ax.set_xlabel("Cosine Similarity (z_target · z_pred)", fontsize=12)
     ax.set_ylabel("Count", fontsize=12)
     ax.set_title("JEPA: Cosine Similarity Distribution — closer to 1.0 is better",
                  fontsize=13, fontweight="bold")
@@ -477,7 +391,7 @@ def plot_cosine_similarity_distribution(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Plot 9 — Generative model reconstructions
+# Plot 8 — Generative model reconstructions
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_generative_reconstructions(
@@ -570,40 +484,37 @@ def main() -> None:
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=2)
 
     # ── Static plots (no model needed) ───────────────────────────────────────
-    print("\n=== [1/8] Loss Curves ===")
+    print("\n=== [1/7] Loss Curves ===")
     plot_loss_curves()
 
-    print("\n=== [2/8] Effective Rank ===")
+    print("\n=== [2/7] Effective Rank ===")
     plot_effective_rank_jepa()
 
-    print("\n=== [3/8] Temporal Input Strips ===")
+    print("\n=== [3/7] Temporal Input Strips ===")
     plot_temporal_strips(val_loader)
 
     # ── JEPA model plots ──────────────────────────────────────────────────────
     print("\n=== Loading JEPA checkpoint ===")
-    jepa_model = JEPAModel(embedding_dim=128, hidden_dim=512, image_size=IMAGE_SIZE)
+    jepa_model = JEPAModel(embedding_dim=256, hidden_dim=512, image_size=IMAGE_SIZE)
     load_jepa_checkpoint(jepa_model, OUTPUT_DIR / "checkpoint_jepa.pt", device)
     jepa_model = jepa_model.to(device)
 
-    print("\n=== [4/8] t-SNE Embedding Space ===")
-    s_x, s_y, s_y_pred = extract_embeddings_jepa(jepa_model, val_loader, device, n_samples=500)
-    plot_embedding_space_jepa(s_x, s_y, s_y_pred)
+    print("\n=== [4/7] t-SNE Projector Space ===")
+    s_x, s_y, z_target, z_pred = extract_embeddings_jepa(jepa_model, val_loader, device, n_samples=500)
+    plot_embedding_space_jepa(z_target, z_pred)
 
-    print("\n=== [5/8] Embedding Heatmaps ===")
+    print("\n=== [5/7] Projector Heatmaps ===")
     plot_jepa_embedding_heatmaps(jepa_model, val_loader, device)
 
-    print("\n=== [6/8] Pixel-Space Decode Panel ===")
-    plot_jepa_pixel_decode(jepa_model, val_loader, device)
+    print("\n=== [6/7] Per-Dimension Prediction Error ===")
+    plot_per_dimension_error(z_target, z_pred)
 
-    print("\n=== [7/8] Per-Dimension Prediction Error ===")
-    plot_per_dimension_error(s_y, s_y_pred)
-
-    print("\n=== [8/8] Cosine Similarity Distribution ===")
-    plot_cosine_similarity_distribution(s_y, s_y_pred)
+    print("\n=== [7/7] Cosine Similarity Distribution ===")
+    plot_cosine_similarity_distribution(z_target, z_pred)
 
     # ── Generative model plots ────────────────────────────────────────────────
     print("\n=== [+] Generative Model Reconstructions ===")
-    gen_model = GenerativeModel(embedding_dim=128, image_size=IMAGE_SIZE)
+    gen_model = GenerativeModel(embedding_dim=256, image_size=IMAGE_SIZE)
     load_generative_checkpoint(gen_model, OUTPUT_DIR / "checkpoint_generative.pt", device)
     gen_model = gen_model.to(device)
     plot_generative_reconstructions(gen_model, val_loader, device)
