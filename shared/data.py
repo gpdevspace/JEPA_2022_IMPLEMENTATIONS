@@ -122,6 +122,7 @@ class MovingMNISTDataset(Dataset):
         num_digits: int = 2,
         seed: int = 42,
         device: str = "cpu",
+        return_state: bool = False,
     ):
         self.n_sequences = n_sequences
         self.seq_length = seq_length
@@ -130,6 +131,7 @@ class MovingMNISTDataset(Dataset):
         self.num_digits = num_digits
         self.seed = seed
         self.device = device
+        self.return_state = return_state
 
         assert image_size > digit_size, \
             f"image_size ({image_size}) must be larger than digit_size ({digit_size})"
@@ -158,7 +160,7 @@ class MovingMNISTDataset(Dataset):
             x: Stacked 4 frames [t-3, t-2, t-1, t] shape (4, H, W)
             y: Single future frame [t+1]               shape (1, H, W)
         """
-        seq = self._generate_sequence(idx)  # (seq_length, 1, H, W)
+        seq, states = self._generate_sequence(idx)  # seq: (seq_length, 1, H, W)
 
         x = torch.cat([seq[0], seq[1], seq[2], seq[3]], dim=0)  # (4, H, W)
         y = seq[4]                                                # (1, H, W)
@@ -166,9 +168,14 @@ class MovingMNISTDataset(Dataset):
         x = x.unsqueeze(0)  # (1, 4, H, W)
         y = y.unsqueeze(0)  # (1, 1, H, W)
 
+        if self.return_state:
+            # We want the state at the final input frame, which is t=3
+            state = states[3]
+            return x, y, state
+
         return x, y
 
-    def _generate_sequence(self, idx: int) -> torch.Tensor:
+    def _generate_sequence(self, idx: int) -> tuple[torch.Tensor, list[dict]]:
         """Generate one sequence of bouncing digits on a larger canvas."""
         rng = np.random.default_rng(self.seed + idx)
 
@@ -182,6 +189,7 @@ class MovingMNISTDataset(Dataset):
         velocities = [rng.uniform(-4, 4, size=2) for _ in range(self.num_digits)]
 
         frames = []
+        states = []
         for t in range(self.seq_length):
             canvas = torch.zeros(1, self.image_size, self.image_size)
 
@@ -212,8 +220,13 @@ class MovingMNISTDataset(Dataset):
             brightness = rng.uniform(0.8, 1.0)
             canvas = torch.clamp(canvas * brightness, 0, 1)
             frames.append(canvas)
+            states.append({
+                "positions": np.copy(positions),
+                "velocities": np.copy(velocities),
+                "digit_ids": np.copy(digit_ids)
+            })
 
-        return torch.stack(frames, dim=0)  # (seq_length, 1, H, W)
+        return torch.stack(frames, dim=0), states  # (seq_length, 1, H, W), list of states
 
 
 def make_dataset(
