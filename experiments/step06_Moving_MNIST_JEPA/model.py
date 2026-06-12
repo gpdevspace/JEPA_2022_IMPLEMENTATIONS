@@ -225,10 +225,18 @@ class JEPAModel(nn.Module):
             s_y = self.target_encoder(y)
             z_target = self.projector(s_y)
 
-        loss = self.vicreg_loss(
+        jepa_loss = self.vicreg_loss(
             z_pred,
             z_target,
         )
+
+        encoder_loss = self.vicreg_loss(
+            s_x,
+            s_y,
+        )
+
+        lambda_encoder = 0.01
+        loss = jepa_loss + lambda_encoder * encoder_loss
 
         return {
             "s_x": s_x,

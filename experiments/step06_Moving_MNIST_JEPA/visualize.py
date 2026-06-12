@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from experiments.step06_latent_var_JEPA.model import JEPAModel, GenerativeModel
+from experiments.step06_Moving_MNIST_JEPA.model import JEPAModel, GenerativeModel
 from shared.data import MovingMNISTDataset
 from shared.device import get_device
 
@@ -58,31 +58,31 @@ def load_generative_checkpoint(
 
 def plot_loss_curves() -> None:
     """Training/validation loss curves for both models on the same figure."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 1, figsize=(8, 6))
 
     jepa_hist_path = OUTPUT_DIR / "loss_history_jepa.json"
     if jepa_hist_path.exists():
         with open(jepa_hist_path) as f:
             jepa_hist = json.load(f)
-        axes[0].plot(jepa_hist["train_loss"], label="Train", linewidth=2)
-        axes[0].plot(jepa_hist["val_loss"],   label="Val",   linewidth=2)
-        axes[0].set_xlabel("Epoch", fontsize=12)
-        axes[0].set_ylabel("MSE Loss", fontsize=12)
-        axes[0].set_title("JEPA: Embedding-Space Prediction Loss", fontsize=13, fontweight="bold")
-        axes[0].legend(fontsize=11)
-        axes[0].grid(True, alpha=0.3)
+        axes.plot(jepa_hist["train_loss"], label="Train", linewidth=2)
+        axes.plot(jepa_hist["val_loss"],   label="Val",   linewidth=2)
+        axes.set_xlabel("Epoch", fontsize=12)
+        axes.set_ylabel("MSE Loss", fontsize=12)
+        axes.set_title("JEPA: Embedding-Space Prediction Loss", fontsize=13, fontweight="bold")
+        axes.legend(fontsize=11)
+        axes.grid(True, alpha=0.3)
 
-    gen_hist_path = OUTPUT_DIR / "loss_history_generative.json"
-    if gen_hist_path.exists():
-        with open(gen_hist_path) as f:
-            gen_hist = json.load(f)
-        axes[1].plot(gen_hist["train_loss"], label="Train", linewidth=2)
-        axes[1].plot(gen_hist["val_loss"],   label="Val",   linewidth=2)
-        axes[1].set_xlabel("Epoch", fontsize=12)
-        axes[1].set_ylabel("MSE Loss", fontsize=12)
-        axes[1].set_title("Generative: Pixel-Space Reconstruction Loss", fontsize=13, fontweight="bold")
-        axes[1].legend(fontsize=11)
-        axes[1].grid(True, alpha=0.3)
+    # gen_hist_path = OUTPUT_DIR / "loss_history_generative.json"
+    # if gen_hist_path.exists():
+    #     with open(gen_hist_path) as f:
+    #         gen_hist = json.load(f)
+    #     axes[1].plot(gen_hist["train_loss"], label="Train", linewidth=2)
+    #     axes[1].plot(gen_hist["val_loss"],   label="Val",   linewidth=2)
+    #     axes[1].set_xlabel("Epoch", fontsize=12)
+    #     axes[1].set_ylabel("MSE Loss", fontsize=12)
+    #     axes[1].set_title("Generative: Pixel-Space Reconstruction Loss", fontsize=13, fontweight="bold")
+    #     axes[1].legend(fontsize=11)
+    #     axes[1].grid(True, alpha=0.3)
 
     plt.tight_layout()
     _save(fig, "loss_curves.png")
@@ -108,7 +108,7 @@ def plot_effective_rank_jepa() -> None:
 
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(jepa_hist["val_eff_rank"], marker="o", linewidth=2, markersize=7, color="royalblue")
-    ax.axhline(y=128, color="red",    linestyle="--", linewidth=2, label="Max rank (dim=128)")
+    ax.axhline(y=256, color="red",    linestyle="--", linewidth=2, label="Max rank (dim=256)")
     ax.axhline(y=1,   color="orange", linestyle="--", linewidth=2, label="Collapse (rank=1)")
     ax.set_xlabel("Epoch", fontsize=12)
     ax.set_ylabel("Effective Rank", fontsize=12)
@@ -239,7 +239,7 @@ def plot_embedding_space_jepa(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Plot 5 — JEPA embedding heatmaps (z_target vs z_pred per sample)
+# Plot 5 — JEPA embedding heatmaps (s_y vs s_x per sample)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_jepa_embedding_heatmaps(
@@ -248,10 +248,9 @@ def plot_jepa_embedding_heatmaps(
     device: torch.device,
     n_display: int = 8,
 ) -> None:
-    """3-row panel per sample: input frame | z_target heatmap | z_pred heatmap.
+    """3-row panel per sample: input frame | s_y (true) | s_x (predicted).
 
-    The projector vectors are reshaped to a 2-D grid purely for visual
-    comparison; closeness between row 2 and row 3 indicates good prediction.
+    All plots (including encoder vectors) are square grids.
     """
     jepa_model.eval()
 
@@ -261,51 +260,51 @@ def plot_jepa_embedding_heatmaps(
         y = y.squeeze(1).to(device)
 
         outputs = jepa_model(x, y)
-        z_target = outputs["z_target"].cpu().numpy()
-        z_pred   = outputs["z_pred"].cpu().numpy()
+        s_y      = outputs["s_y"].cpu().numpy()
+        s_x      = outputs["s_x"].cpu().numpy()
 
         x        = x.cpu()
 
-    projector_dim = z_target.shape[1]
-    # Pick a grid shape that tiles the projector dimension neatly
-    grid_cols = 32
-    grid_rows = projector_dim // grid_cols   # e.g. 1024 // 32 = 32
-
-    pred_errors = np.sqrt(np.mean((z_target - z_pred) ** 2, axis=1))
+    encoder_dim   = s_y.shape[1]
+    
+    # Reshape to a square grid (e.g. 16x16 for dim 256)
+    grid_side = int(np.sqrt(encoder_dim))
+    
+    s_pred_errors = np.sqrt(np.mean((s_y - s_x) ** 2, axis=1))
     n_display   = min(n_display, x.shape[0])
 
-    fig, axes = plt.subplots(3, n_display, figsize=(2.2 * n_display, 7))
+    fig, axes = plt.subplots(3, n_display, figsize=(2.2 * n_display, 7.5), gridspec_kw={'height_ratios': [1, 1, 1]})
 
     for i in range(n_display):
-        # Row 0: last input frame
+        # Row 0: last input frame (square 64x64)
         axes[0, i].imshow(x[i, 3].numpy(), cmap="gray", vmin=0, vmax=1)
         axes[0, i].set_title(f"input t\n#{i+1}", fontsize=8)
         axes[0, i].axis("off")
 
-        # Common colour scale so rows 1 and 2 are directly comparable
-        vmin = min(z_target[i].min(), z_pred[i].min())
-        vmax = max(z_target[i].max(), z_pred[i].max())
+        # ── Encoder Embeddings (square grid) ──
+        s_vmin = min(s_y[i].min(), s_x[i].min())
+        s_vmax = max(s_y[i].max(), s_x[i].max())
 
-        # Row 1: z_target (true)
-        im1 = axes[1, i].imshow(
-            z_target[i].reshape(grid_rows, grid_cols),
-            cmap="RdBu_r", vmin=vmin, vmax=vmax,
+        # Row 1: s_y (true)
+        im_s1 = axes[1, i].imshow(
+            s_y[i].reshape(grid_side, grid_side),
+            cmap="RdBu_r", vmin=s_vmin, vmax=s_vmax,
         )
-        axes[1, i].set_title("z_target\n(true)", fontsize=8)
+        axes[1, i].set_title("s_y\n(true)", fontsize=8)
         axes[1, i].axis("off")
 
-        # Row 2: z_pred (predicted)
-        im2 = axes[2, i].imshow(
-            z_pred[i].reshape(grid_rows, grid_cols),
-            cmap="RdBu_r", vmin=vmin, vmax=vmax,
+        # Row 2: s_x ("predicted")
+        im_s2 = axes[2, i].imshow(
+            s_x[i].reshape(grid_side, grid_side),
+            cmap="RdBu_r", vmin=s_vmin, vmax=s_vmax,
         )
-        axes[2, i].set_title(f"z_pred\nerr={pred_errors[i]:.3f}", fontsize=8)
+        axes[2, i].set_title(f"s_x (s_y pred)\nerr={s_pred_errors[i]:.3f}", fontsize=8)
         axes[2, i].axis("off")
 
-    # One shared colorbar on the right
-    fig.colorbar(im2, ax=axes[1:, -1], fraction=0.05, pad=0.04, label="Activation")
+    # Shared colorbar
+    fig.colorbar(im_s2, ax=axes[1:, -1], fraction=0.05, pad=0.04, label="Encoder Activation")
 
-    plt.suptitle("JEPA: Projector Heatmaps — z_target (true) vs z_pred (predicted)",
+    plt.suptitle("JEPA: Encoder Heatmaps — s_y (true) vs s_x (predicted)",
                  fontsize=13, fontweight="bold")
     plt.tight_layout()
     _save(fig, "jepa_embedding_heatmaps.png")
@@ -449,33 +448,38 @@ def plot_generative_reconstructions(
 # ──────────────────────────────────────────────────────────────────────────────
 
 def plot_probe_comparisons() -> None:
-    """Compare R2 scores of Linear vs MLP probes."""
+    """Compare R2 scores of Linear, MLP, and Projector probes."""
     linear_path = OUTPUT_DIR / "linear_probe_metrics.json"
     mlp_path = OUTPUT_DIR / "mlp_probe_metrics.json"
+    projector_path = OUTPUT_DIR / "projector_probe_metrics.json"
 
-    if not linear_path.exists() or not mlp_path.exists():
-        print("Probe metrics not found. Run linear_probe.py and mlp_probe.py first.")
+    if not linear_path.exists() or not mlp_path.exists() or not projector_path.exists():
+        print("Probe metrics not found. Run linear_probe.py, mlp_probe.py, and projector_probe.py first.")
         return
 
     with open(linear_path) as f:
         linear_data = json.load(f)
     with open(mlp_path) as f:
         mlp_data = json.load(f)
+    with open(projector_path) as f:
+        projector_data = json.load(f)
 
     target_names = ["x1", "x2", "y1", "y2", "vx1", "vx2", "vy1", "vy2"]
     
     linear_r2 = [max(0, linear_data["R2"].get(k, 0)) for k in target_names]
     mlp_r2 = [max(0, mlp_data["R2"].get(k, 0)) for k in target_names]
+    projector_r2 = [max(0, projector_data["R2"].get(k, 0)) for k in target_names]
 
     x = np.arange(len(target_names))
-    width = 0.35
+    width = 0.25
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(x - width/2, linear_r2, width, label='Linear Probe', color='steelblue', alpha=0.8)
-    ax.bar(x + width/2, mlp_r2, width, label='MLP Probe', color='tomato', alpha=0.8)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.bar(x - width, linear_r2, width, label='Linear Probe (s_x)', color='steelblue', alpha=0.8)
+    ax.bar(x, mlp_r2, width, label='MLP Probe (s_x)', color='tomato', alpha=0.8)
+    ax.bar(x + width, projector_r2, width, label='Projector Probe (z_x)', color='mediumseagreen', alpha=0.8)
 
     ax.set_ylabel('R² Score', fontsize=12)
-    ax.set_title('Probe Performance: Linear vs MLP (Higher is better)', fontsize=14, fontweight="bold")
+    ax.set_title('Probe Performance: Linear vs MLP vs Projector (Higher is better)', fontsize=14, fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(target_names)
     ax.set_ylim(0, 1.05)
@@ -554,11 +558,11 @@ def main() -> None:
     plot_cosine_similarity_distribution(z_target, z_pred)
 
     # ── Generative model plots ────────────────────────────────────────────────
-    print("\n=== [+] Generative Model Reconstructions ===")
-    gen_model = GenerativeModel(embedding_dim=256, image_size=IMAGE_SIZE)
-    load_generative_checkpoint(gen_model, OUTPUT_DIR / "checkpoint_generative.pt", device)
-    gen_model = gen_model.to(device)
-    plot_generative_reconstructions(gen_model, val_loader, device)
+    # print("\n=== [+] Generative Model Reconstructions ===")
+    # gen_model = GenerativeModel(embedding_dim=256, image_size=IMAGE_SIZE)
+    # load_generative_checkpoint(gen_model, OUTPUT_DIR / "checkpoint_generative.pt", device)
+    # gen_model = gen_model.to(device)
+    # plot_generative_reconstructions(gen_model, val_loader, device)
 
     print("\n=== [+] Probe Comparisons ===")
     plot_probe_comparisons()

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import json
-from experiments.step06_latent_var_JEPA.model import JEPAModel
+from experiments.step06_Moving_MNIST_JEPA.model import JEPAModel
 from shared.data import MovingMNISTDataset
 from shared.device import get_device
 
